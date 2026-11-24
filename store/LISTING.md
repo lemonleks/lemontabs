@@ -59,6 +59,7 @@ Replaces the new tab page with a dashboard of the user's open tabs, grouped by s
 | `bookmarks` | Read-only: shows bookmarks matching the text typed in the search box. |
 | `favicon` | Shows site icons from Chrome's local favicon cache, so no requests go to third-party icon services. |
 | `storage` | Saves the "Keep same-site tabs together" setting so the background service worker can read it. |
+| `sessions` | Undo (Cmd/Ctrl+Z) for tabs closed from the dashboard: reopens exactly those tabs from Chrome's recently-closed list. |
 
 | Поле | Значение |
 | --- | --- |

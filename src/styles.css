@@ -482,6 +482,60 @@ main {
 }
 
 /* Exit: collapse in place so the cards below in the column glide up instead of jumping. */
+/* Drag a row onto a card: the card under the pointer shows it will take the tab. */
+.card.drop {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.card.group.drop {
+  border-color: var(--gc);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--gc) 22%, transparent);
+}
+
+.row[draggable] {
+  cursor: grab;
+}
+
+/* Pinned tabs: one quiet line of chips above the sections. */
+.pinned {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 18px 0 4px;
+}
+
+.pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 190px;
+  height: 30px;
+  padding: 0 10px 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 12.5px;
+}
+
+.pin:hover {
+  border-color: color-mix(in oklab, var(--ink) 14%, var(--line));
+  color: var(--ink);
+}
+
+.pin-title {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pin svg {
+  flex: none;
+  color: var(--muted);
+}
+
 .card.leaving {
   animation: card-out 0.24s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   pointer-events: none;

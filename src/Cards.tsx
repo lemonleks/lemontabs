@@ -15,6 +15,8 @@ export interface Actions {
   sortGroup(card: Card): void;
   /** Opens the "move to group" menu for a tab, anchored to the clicked button. */
   groupMenu(tab: Tab, anchor: HTMLElement): void;
+  /** Moves tabs into a group, into a new group, or (null) out of their group. Undoable. */
+  moveToGroup(tabIds: number[], target: number | "new" | null): void;
 }
 
 // Fixed metrics give every card's height from its tab count alone, so masonry needs no DOM measuring.
@@ -138,25 +140,27 @@ function TabRow({ tab, stale, actions, onLast }: RowProps) {
   return (
     <li
       class={`row${stale ? " stale" : ""}${tab.discarded ? " asleep" : ""}${leaving ? " leaving" : ""}`}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer!.setData(DRAG_TYPE, String(tab.id));
+        e.dataTransfer!.effectAllowed = "move";
+      }}
       onAnimationEnd={(e) => leaving && e.target === e.currentTarget && actions.close([tab.id!])}
     >
       <button class="row-main" title={`${tab.title}\n${tab.url}`} onClick={() => actions.activate(tab)}>
         <Favicon url={tab.url || tab.pendingUrl} />
         <span class="row-title">{tab.title || tab.url}</span>
         {tab.audible && <Icon name="volume" size={13} />}
-        {tab.pinned && <Icon name="pin" size={13} />}
         {stale && <span class="age">{age(tab.lastAccessed!)}</span>}
       </button>
-      {!tab.pinned && (
-        <button
-          class="row-x row-group"
-          aria-label="Move to group"
-          title="Move to group"
-          onClick={(e) => actions.groupMenu(tab, e.currentTarget)}
-        >
-          <Icon name="folderPlus" size={14} />
-        </button>
-      )}
+      <button
+        class="row-x row-group"
+        aria-label="Move to group"
+        title="Move to group"
+        onClick={(e) => actions.groupMenu(tab, e.currentTarget)}
+      >
+        <Icon name="folderPlus" size={14} />
+      </button>
       <button class="row-x" aria-label="Close tab" title="Close tab" onClick={() => (onLast ? onLast() : setLeaving(true))}>
         <Icon name="x" size={14} />
       </button>
@@ -182,6 +186,53 @@ function TabList({ card, stale, actions, onLast }: CardProps & { onLast: () => v
 }
 
 /**
+ * Rows can be dragged onto a group card (move into that group) or a site card (take out of its group).
+ * The drop handler decides; dragover only knows a tab is being dragged, not which one.
+ */
+const DRAG_TYPE = "application/x-lemontabs-tab";
+
+function useDrop(target: number | null, actions: Actions) {
+  const [over, setOver] = useState(false);
+  const accepts = (e: DragEvent) => e.dataTransfer?.types.includes(DRAG_TYPE);
+  return {
+    over,
+    props: {
+      onDragOver: (e: DragEvent) => {
+        if (!accepts(e)) return;
+        e.preventDefault();
+        e.dataTransfer!.dropEffect = "move";
+        setOver(true);
+      },
+      onDragLeave: (e: DragEvent) => {
+        if (!(e.currentTarget as Node).contains(e.relatedTarget as Node | null)) setOver(false);
+      },
+      onDrop: (e: DragEvent) => {
+        setOver(false);
+        const id = Number(e.dataTransfer?.getData(DRAG_TYPE));
+        if (!id) return;
+        e.preventDefault();
+        actions.moveToGroup([id], target);
+      },
+    },
+  };
+}
+
+/** Pinned tabs: a compact strip of icons. They rarely change and are usually busy, so no rows. */
+export function PinnedStrip({ tabs, actions }: { tabs: Tab[]; actions: Actions }) {
+  return (
+    <div class="pinned">
+      {tabs.map((t) => (
+        <button key={t.id} class="pin" title={`${t.title}\n${t.url}`} onClick={() => actions.activate(t)}>
+          <Favicon url={t.url || t.pendingUrl} />
+          <span class="pin-title">{t.title || t.url}</span>
+          {t.audible && <Icon name="volume" size={12} />}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
  * Cards size themselves from their rows, so a closing row collapses and everything below glides up.
  * A card that is going away gets its height pinned and animates to zero before its tabs are closed.
  */
@@ -201,18 +252,22 @@ function useCardExit({ card, searching, actions }: CardProps) {
 export function SiteCard(props: CardProps) {
   const { card, actions } = props;
   const exit = useCardExit(props);
+  const drop = useDrop(null, actions);
   return (
-    <section class={`card${exit.leaving ? " leaving" : ""}`} style={exit.style} onAnimationEnd={exit.onAnimationEnd}>
+    <section
+      class={`card${exit.leaving ? " leaving" : ""}${drop.over ? " drop" : ""}`}
+      style={exit.style}
+      onAnimationEnd={exit.onAnimationEnd}
+      {...drop.props}
+    >
       <header class="card-head">
         <Favicon url={card.tabs[0].url} />
         <h3 class="card-title" title={card.title}>{card.title}</h3>
         <span class="count">{card.tabs.length}</span>
         <div class="card-actions">
-          {card.tabs.some((t) => !t.pinned) && (
-            <button class="icon-btn" title="Put these tabs in a Chrome tab group" onClick={() => actions.groupSite(card)}>
-              <Icon name="folderPlus" size={15} />
-            </button>
-          )}
+          <button class="icon-btn" title="Put these tabs in a Chrome tab group" onClick={() => actions.groupSite(card)}>
+            <Icon name="folderPlus" size={15} />
+          </button>
           <button class="icon-btn danger" title={`Close all ${card.tabs.length}`} onClick={() => actions.closeAll(card, exit.leave)}>
             <Icon name="x" size={15} />
           </button>
@@ -232,6 +287,7 @@ export function GroupCard(props: CardProps) {
   const [editing, setEditing] = useState(false);
   const collapsed = group.collapsed && !searching;
   const anchor = `--pal${group.id}`;
+  const drop = useDrop(group.id, actions);
 
   const commit = (value: string) => {
     setEditing(false);
@@ -240,10 +296,11 @@ export function GroupCard(props: CardProps) {
 
   return (
     <section
-      class={`card group${exit.leaving ? " leaving" : ""}`}
+      class={`card group${exit.leaving ? " leaving" : ""}${drop.over ? " drop" : ""}`}
       data-color={group.color}
       style={exit.style}
       onAnimationEnd={exit.onAnimationEnd}
+      {...drop.props}
     >
       <header class="card-head">
         <button

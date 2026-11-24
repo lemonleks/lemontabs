@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { applyOrder, deriveView, sortBySitePlan, useSnapshot, type Card, type Snapshot, type Tab } from "./model";
-import { bookmarksHeight, BookmarksCard, cardHeight, GROUP_COLORS, GroupCard, Masonry, SiteCard, type Actions, type Bookmark } from "./Cards";
+import { bookmarksHeight, BookmarksCard, cardHeight, GROUP_COLORS, GroupCard, Masonry, PinnedStrip, SiteCard, type Actions, type Bookmark } from "./Cards";
+import { placesOf, remember, reopen, restorePlaces, undoLast } from "./undo";
 import { Icon } from "./icons";
 import { Lemon } from "./Lemon";
 import { Digits } from "./Digits";
@@ -52,6 +53,11 @@ export function App({ initial }: { initial: Snapshot }) {
         return;
       }
       const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "z" && !typing && !document.querySelector("dialog[open]")) {
+        e.preventDefault();
+        void undoLast().then((label) => setNote(label ? `Undone: ${label}` : "Nothing to undo"));
+        return;
+      }
       if (typing || e.metaKey || e.ctrlKey || e.altKey || document.querySelector("dialog[open]")) return;
       if (e.key === "/") e.preventDefault();
       if (e.key === "/" || e.key.length === 1) input.focus();
@@ -68,9 +74,12 @@ export function App({ initial }: { initial: Snapshot }) {
 
   const confirm = (a: Ask) => (prefs.skipConfirm(a.skipKey) ? a.run() : setAsk(a));
   const close = (ids: number[]) => {
+    const urls = snap.tabs.filter((t) => ids.includes(t.id!)).map((t) => t.url!);
     drop(ids);
     void chrome.tabs.remove(ids);
+    remember(`close ${plural(ids.length, "tab")}`, () => reopen(urls));
   };
+  const byIds = (ids: number[]) => snap.tabs.filter((t) => ids.includes(t.id!));
 
   const actions: Actions = {
     async activate(tab: Tab) {
@@ -91,6 +100,7 @@ export function App({ initial }: { initial: Snapshot }) {
     },
     async groupSite(card: Card) {
       const tabs = card.tabs.filter((t) => !t.pinned);
+      const places = placesOf(tabs);
       // Land the group in the window that already holds most of these tabs.
       const perWindow = new Map<number, number>();
       for (const t of tabs) perWindow.set(t.windowId, (perWindow.get(t.windowId) ?? 0) + 1);
@@ -99,22 +109,48 @@ export function App({ initial }: { initial: Snapshot }) {
       // Same site, same color every time; skip grey (index 0), it reads as "no group".
       const hash = [...card.title].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
       await chrome.tabGroups.update(groupId, { title: card.title, color: GROUP_COLORS[1 + (hash % (GROUP_COLORS.length - 1))] });
+      remember(`group ${card.title}`, () => restorePlaces(places));
     },
     updateGroup(id, change) {
+      const group = snap.groups.find((g) => g.id === id);
+      if (!group) return;
+      const before = Object.fromEntries(Object.keys(change).map((k) => [k, group[k as keyof typeof group]]));
       void chrome.tabGroups.update(id, change);
+      remember("group change", () => chrome.tabGroups.update(id, before));
     },
     ungroup(card: Card) {
-      const ids = snap.tabs.filter((t) => t.groupId === card.group!.id).map((t) => t.id!);
-      void chrome.tabs.ungroup(ids as [number, ...number[]]);
+      const group = card.group!;
+      const tabs = snap.tabs.filter((t) => t.groupId === group.id);
+      const places = placesOf(tabs);
+      void chrome.tabs.ungroup(tabs.map((t) => t.id!) as [number, ...number[]]);
+      remember(`ungroup ${group.title || "group"}`, async () => {
+        // The old group is gone once emptied: regroup into a new one dressed the same, then reposition.
+        const id = await chrome.tabs.group({ tabIds: tabs.map((t) => t.id!) as [number, ...number[]] });
+        await chrome.tabGroups.update(id, { title: group.title, color: group.color, collapsed: group.collapsed });
+        await restorePlaces(places.map((p) => ({ ...p, groupId: id })));
+      });
     },
     async sortGroup(card: Card) {
       const tabs = await chrome.tabs.query({ groupId: card.group!.id });
       const order = sortBySitePlan(tabs);
       if (!order) return setNote("This group is already sorted by site");
+      const places = placesOf(tabs);
       await applyOrder(order, tabs);
+      remember("sort group", () => restorePlaces(places));
     },
     groupMenu(tab, anchor) {
       setMenu({ tab, anchor });
+    },
+    async moveToGroup(ids, target) {
+      const tabs = byIds(ids).filter((t) => !t.pinned && t.groupId !== target && !(target === null && t.groupId < 0));
+      if (!tabs.length) return;
+      const tabIds = tabs.map((t) => t.id!) as [number, ...number[]];
+      const places = placesOf(tabs);
+      if (target === null) await chrome.tabs.ungroup(tabIds);
+      else if (target === "new") await chrome.tabs.group({ tabIds, createProperties: { windowId: tabs[0].windowId } });
+      else await chrome.tabs.group({ groupId: target, tabIds });
+      const name = typeof target === "number" ? `move to ${snap.groups.find((g) => g.id === target)?.title || "group"}` : target ? "new group" : "remove from group";
+      remember(name, () => restorePlaces(places));
     },
   };
 
@@ -136,7 +172,11 @@ export function App({ initial }: { initial: Snapshot }) {
       message: "Reorders tabs in this window alphabetically by site. Pinned tabs and each tab group are sorted in place, so no tab changes group.",
       confirm: "Sort",
       skipKey: "sort",
-      run: () => void applyOrder(order, tabs),
+      run: () => {
+        const places = placesOf(tabs);
+        void applyOrder(order, tabs);
+        remember("sort window", () => restorePlaces(places));
+      },
     });
   };
 
@@ -145,10 +185,10 @@ export function App({ initial }: { initial: Snapshot }) {
     setScope(s);
   };
 
-  const matchCount = query ? [...view.groupCards, ...view.siteCards].reduce((n, c) => n + c.tabs.length, 0) : 0;
+  const matchCount = query ? view.pinned.length + [...view.groupCards, ...view.siteCards].reduce((n, c) => n + c.tabs.length, 0) : 0;
   const stale = showStale ? view.staleIds : new Set<number>();
   const searching = !!query.trim();
-  const nothing = !view.groupCards.length && !view.siteCards.length && !bookmarks.length;
+  const nothing = !view.pinned.length && !view.groupCards.length && !view.siteCards.length && !bookmarks.length;
 
   return (
     <>
@@ -219,6 +259,7 @@ export function App({ initial }: { initial: Snapshot }) {
       {note && <div class="note" role="status">{note}</div>}
 
       <main>
+        {view.pinned.length > 0 && <PinnedStrip tabs={view.pinned} actions={actions} />}
         {view.groupCards.length > 0 && (
           <section class="block">
             <h2 class="block-title">
@@ -266,6 +307,7 @@ export function App({ initial }: { initial: Snapshot }) {
           {...menu}
           groups={snap.groups}
           tabs={snap.tabs}
+          move={(target) => actions.moveToGroup([menu.tab.id!], target)}
           // Light dismiss closes the old menu asynchronously, possibly after another row opened a new one.
           onDone={() => setMenu((m) => (m?.tab.id === menu.tab.id ? null : m))}
         />
@@ -284,7 +326,14 @@ interface MenuAt {
  * "Move to group" menu for one tab: existing groups (its window first), a new group, or ungroup.
  * Positioned with CSS anchor positioning against the clicked button; it flips above near the bottom.
  */
-function GroupMenu({ tab, anchor, groups, tabs, onDone }: MenuAt & { groups: chrome.tabGroups.TabGroup[]; tabs: Tab[]; onDone: () => void }) {
+function GroupMenu({
+  tab,
+  anchor,
+  groups,
+  tabs,
+  move,
+  onDone,
+}: MenuAt & { groups: chrome.tabGroups.TabGroup[]; tabs: Tab[]; move: (target: number | "new" | null) => void; onDone: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     // The row button is only shown on hover; keep it laid out while the menu is open, or the
@@ -297,8 +346,8 @@ function GroupMenu({ tab, anchor, groups, tabs, onDone }: MenuAt & { groups: chr
       delete anchor.dataset.open;
     };
   }, []);
-  const pick = (move: () => Promise<unknown>) => {
-    void move();
+  const pick = (target: number | "new" | null) => {
+    move(target);
     ref.current!.hidePopover(); // closing fires onToggle -> onDone
   };
   const targets = groups
@@ -313,19 +362,19 @@ function GroupMenu({ tab, anchor, groups, tabs, onDone }: MenuAt & { groups: chr
       onToggle={(e) => (e as ToggleEvent).newState === "closed" && onDone()}
     >
       {targets.map((g) => (
-        <button key={g.id} onClick={() => pick(() => chrome.tabs.group({ groupId: g.id, tabIds: [tab.id!] }))}>
+        <button key={g.id} onClick={() => pick(g.id)}>
           <span class="swatch" data-color={g.color} />
           <span class="label">{g.title || "Unnamed group"}</span>
           <span class="count">{tabs.filter((t) => t.groupId === g.id).length}</span>
         </button>
       ))}
       {targets.length > 0 && <hr />}
-      <button onClick={() => pick(() => chrome.tabs.group({ tabIds: [tab.id!], createProperties: { windowId: tab.windowId } }))}>
+      <button onClick={() => pick("new")}>
         <Icon name="folderPlus" size={14} />
         <span class="label">New group</span>
       </button>
       {tab.groupId >= 0 && (
-        <button onClick={() => pick(() => chrome.tabs.ungroup([tab.id!]))}>
+        <button onClick={() => pick(null)}>
           <Icon name="ungroup" size={14} />
           <span class="label">Remove from group</span>
         </button>

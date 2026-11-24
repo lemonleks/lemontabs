@@ -89,6 +89,8 @@ export interface View {
   total: number;
   windows: number;
   inScope: number;
+  /** Pinned tabs: shown as a strip above everything, not in site cards (pinned tabs can't be grouped). */
+  pinned: Tab[];
   groupCards: Card[];
   siteCards: Card[];
   duplicateIds: number[];
@@ -109,10 +111,13 @@ export function deriveView(snap: Snapshot, scope: Scope, query: string): View {
   const q = query.trim().toLowerCase();
   const matches = (t: Tab) => !q || (t.title ?? "").toLowerCase().includes(q) || (t.url ?? "").toLowerCase().includes(q);
 
+  const pinned: Tab[] = [];
   const byGroup = new Map<number, Tab[]>();
   const bySite = new Map<string, Tab[]>();
   for (const t of scoped) {
-    if (t.groupId >= 0) {
+    if (t.pinned) {
+      if (matches(t)) pinned.push(t);
+    } else if (t.groupId >= 0) {
       const list = byGroup.get(t.groupId);
       if (list) list.push(t);
       else byGroup.set(t.groupId, [t]);
@@ -160,6 +165,7 @@ export function deriveView(snap: Snapshot, scope: Scope, query: string): View {
     total: snap.tabs.length,
     windows: new Set(snap.tabs.map((t) => t.windowId)).size,
     inScope: scoped.length,
+    pinned,
     groupCards,
     siteCards,
     duplicateIds,
