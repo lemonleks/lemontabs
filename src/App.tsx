@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { applyOrder, deriveView, sortBySitePlan, useSnapshot, type Card, type Tab } from "./model";
-import { BookmarksCard, GROUP_COLORS, GroupCard, SiteCard, type Actions, type Bookmark } from "./Cards";
+import { bookmarksHeight, BookmarksCard, cardHeight, GROUP_COLORS, GroupCard, Masonry, SiteCard, type Actions, type Bookmark } from "./Cards";
 import { Icon } from "./icons";
 import { Lemon } from "./Lemon";
 import { applyTheme, KEEP_SITES_TOGETHER, prefs, type Scope, type Theme } from "./settings";
@@ -218,11 +218,13 @@ export function App() {
             <h2 class="block-title">
               Tab groups <span>{view.groupCards.length}</span>
             </h2>
-            <div class="grid">
-              {view.groupCards.map((c) => (
-                <GroupCard key={c.key} card={c} stale={stale} searching={searching} actions={actions} />
-              ))}
-            </div>
+            <Masonry
+              bricks={view.groupCards.map((c) => ({
+                key: c.key,
+                height: cardHeight(c, searching),
+                node: <GroupCard key={c.key} card={c} stale={stale} searching={searching} actions={actions} />,
+              }))}
+            />
           </section>
         )}
         {(view.siteCards.length > 0 || bookmarks.length > 0) && (
@@ -230,12 +232,18 @@ export function App() {
             <h2 class="block-title">
               Sites <span>{view.siteCards.length}</span>
             </h2>
-            <div class="grid">
-              {bookmarks.length > 0 && <BookmarksCard items={bookmarks} />}
-              {view.siteCards.map((c) => (
-                <SiteCard key={c.key} card={c} stale={stale} searching={searching} actions={actions} />
-              ))}
-            </div>
+            <Masonry
+              bricks={[
+                ...(bookmarks.length
+                  ? [{ key: "bookmarks", height: bookmarksHeight(bookmarks.length), node: <BookmarksCard key="bookmarks" items={bookmarks} /> }]
+                  : []),
+                ...view.siteCards.map((c) => ({
+                  key: c.key,
+                  height: cardHeight(c, searching),
+                  node: <SiteCard key={c.key} card={c} stale={stale} searching={searching} actions={actions} />,
+                })),
+              ]}
+            />
           </section>
         )}
         {nothing && (

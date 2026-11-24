@@ -1,4 +1,5 @@
-import { useState } from "preact/hooks";
+import { useLayoutEffect, useRef, useState } from "preact/hooks";
+import type { ComponentChildren } from "preact";
 import type { Card, Tab } from "./model";
 import { Icon } from "./icons";
 
@@ -14,16 +15,58 @@ export interface Actions {
 
 export const favicon = (url = "") => `/_favicon/?pageUrl=${encodeURIComponent(url)}&size=32`;
 
-// Fixed metrics let the grid place cards (masonry-style) from tab counts alone: no DOM measuring.
+// Fixed metrics give every card's height from its tab count alone, so masonry needs no DOM measuring.
 // Keep in sync with --head / --row in styles.css.
 const HEAD = 44;
 const ROW = 26;
 const PAD = 8;
 const GAP = 14;
-const UNIT = 4;
+const MIN_COLUMN = 268;
 
-function boxStyle(height: number) {
-  return { height: `${height}px`, gridRowEnd: `span ${Math.ceil((height + GAP) / UNIT)}` };
+export function cardHeight(card: Card, searching: boolean) {
+  const collapsed = card.group?.collapsed && !searching;
+  return HEAD + (collapsed ? 40 : PAD + card.tabs.length * ROW) + 2;
+}
+
+export const bookmarksHeight = (count: number) => HEAD + PAD + count * ROW + 2;
+
+export interface Brick {
+  key: string;
+  height: number;
+  node: ComponentChildren;
+}
+
+/**
+ * Masonry: tallest card first, each into the currently shortest column. Balances columns well and
+ * gives a giant card (x.com with 200 tabs) a column of its own instead of sitting under small ones.
+ */
+export function Masonry({ bricks }: { bricks: Brick[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    observer.observe(ref.current!);
+    return () => observer.disconnect();
+  }, []);
+
+  const count = Math.max(1, Math.floor((width + GAP) / (MIN_COLUMN + GAP)));
+  const columns: Brick[][] = Array.from({ length: count }, () => []);
+  const heights = new Array<number>(count).fill(0);
+  for (const brick of [...bricks].sort((a, b) => b.height - a.height)) {
+    const shortest = heights.indexOf(Math.min(...heights));
+    columns[shortest].push(brick);
+    heights[shortest] += brick.height + GAP;
+  }
+  return (
+    <div class="masonry" ref={ref}>
+      {width > 0 &&
+        columns.map((column, i) => (
+          <div class="masonry-col" key={i}>
+            {column.map((b) => b.node)}
+          </div>
+        ))}
+    </div>
+  );
 }
 
 function age(ms: number) {
@@ -57,24 +100,20 @@ interface CardProps {
   actions: Actions;
 }
 
-/** Every tab of the card, plus the list's pixel height for the grid span. */
-function tabList({ card, stale, actions }: CardProps) {
-  const height = PAD + card.tabs.length * ROW;
-  const node = (
+function TabList({ card, stale, actions }: CardProps) {
+  return (
     <ul class="rows">
       {card.tabs.map((t) => (
         <TabRow key={t.id} tab={t} stale={stale.has(t.id!)} actions={actions} />
       ))}
     </ul>
   );
-  return { height, node };
 }
 
 export function SiteCard(props: CardProps) {
-  const { card, actions } = props;
-  const list = tabList(props);
+  const { card, searching, actions } = props;
   return (
-    <section class="card" style={boxStyle(HEAD + list.height + 2)}>
+    <section class="card" style={{ height: `${cardHeight(card, searching)}px` }}>
       <header class="card-head">
         <img class="fav" src={favicon(card.tabs[0].url)} width={16} height={16} alt="" />
         <h3 class="card-title" title={card.title}>{card.title}</h3>
@@ -90,7 +129,7 @@ export function SiteCard(props: CardProps) {
           </button>
         </div>
       </header>
-      {list.node}
+      <TabList {...props} />
     </section>
   );
 }
@@ -100,10 +139,8 @@ export const GROUP_COLORS: `${chrome.tabGroups.Color}`[] = ["grey", "blue", "red
 export function GroupCard(props: CardProps) {
   const { card, searching, actions } = props;
   const group = card.group!;
-  const list = tabList(props);
   const [editing, setEditing] = useState(false);
   const collapsed = group.collapsed && !searching;
-  const height = HEAD + (collapsed ? 40 : list.height) + 2;
   const anchor = `--pal${group.id}`;
 
   const commit = (value: string) => {
@@ -112,7 +149,7 @@ export function GroupCard(props: CardProps) {
   };
 
   return (
-    <section class="card group" data-color={group.color} style={boxStyle(height)}>
+    <section class="card group" data-color={group.color} style={{ height: `${cardHeight(card, searching)}px` }}>
       <header class="card-head">
         <button
           class="icon-btn chevron"
@@ -179,7 +216,7 @@ export function GroupCard(props: CardProps) {
           {card.tabs.length > 14 && <span class="count">+{card.tabs.length - 14}</span>}
         </button>
       ) : (
-        list.node
+        <TabList {...props} />
       )}
     </section>
   );
@@ -193,7 +230,7 @@ export interface Bookmark {
 
 export function BookmarksCard({ items }: { items: Bookmark[] }) {
   return (
-    <section class="card bookmarks" style={boxStyle(HEAD + PAD + items.length * ROW + 2)}>
+    <section class="card bookmarks" style={{ height: `${bookmarksHeight(items.length)}px` }}>
       <header class="card-head">
         <Icon name="star" size={15} />
         <h3 class="card-title">Bookmarks</h3>
