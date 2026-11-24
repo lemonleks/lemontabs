@@ -60,92 +60,100 @@ function useTimers() {
   };
 }
 
-function LemonSvg({ asleep }: { asleep: boolean }) {
+type Face = "idle" | "happy" | "surprised" | "asleep";
+
+/**
+ * Kawaii proportions on purpose: solid dark eyes set low and wide, a tiny mouth, blush, and stubby
+ * nubs for arms and feet. Whites-of-the-eyes with tracking pupils read as creepy at this size.
+ */
+function LemonSvg({ face }: { face: Face }) {
+  const asleep = face === "asleep";
   return (
     <svg class="lm-svg" viewBox="0 0 64 64" width="56" height="56" aria-hidden="true">
       <defs>
-        <radialGradient id="lm-skin" cx="0.38" cy="0.3" r="0.75">
-          <stop offset="0" stop-color="#fff6b0" />
-          <stop offset="0.45" stop-color="#fad62a" />
-          <stop offset="1" stop-color="#e3a800" />
+        <radialGradient id="lm-skin" cx="0.38" cy="0.3" r="0.78">
+          <stop offset="0" stop-color="#fff6b8" />
+          <stop offset="0.5" stop-color="#fbd93a" />
+          <stop offset="1" stop-color="#ecb40c" />
         </radialGradient>
       </defs>
 
-      <g class="lm-legs">
-        <g class="lm-leg lm-leg-a">
-          <path d="M26 45 L24.5 55" />
-          <ellipse cx="23.5" cy="56.6" rx="3.6" ry="2" />
-        </g>
-        <g class="lm-leg lm-leg-b">
-          <path d="M38 45 L39.5 55" />
-          <ellipse cx="40.5" cy="56.6" rx="3.6" ry="2" />
-        </g>
-      </g>
+      {!asleep && (
+        <>
+          <ellipse class="lm-nub lm-foot lm-foot-a" cx="25.5" cy="51.2" rx="4.2" ry="2.6" />
+          <ellipse class="lm-nub lm-foot lm-foot-b" cx="38.5" cy="51.2" rx="4.2" ry="2.6" />
+        </>
+      )}
 
       <g class="lm-body">
-        <g class="lm-arm lm-arm-l">
-          <path d="M11 32 Q6 37 7.5 42" />
-          <circle cx="7.6" cy="42.6" r="2.2" />
-        </g>
-        <g class="lm-arm lm-arm-r">
-          <path d="M53 32 Q58 37 56.5 42" />
-          <circle cx="56.4" cy="42.6" r="2.2" />
-        </g>
-
-        <path class="lm-stem" d="M32 13 Q32 9 33.6 7" />
+        {!asleep && (
+          <>
+            {/* Wrapped: the CSS swing/wave transform would override the ellipse's own rotate(). */}
+            <g class="lm-arm lm-arm-l">
+              <ellipse class="lm-nub" cx="8.5" cy="39" rx="2.4" ry="3.6" transform="rotate(25 8.5 39)" />
+            </g>
+            <g class="lm-arm lm-arm-r">
+              <ellipse class="lm-nub" cx="55.5" cy="39" rx="2.4" ry="3.6" transform="rotate(-25 55.5 39)" />
+            </g>
+          </>
+        )}
+        <path class="lm-stem" d="M32 15 Q32 10.5 33.6 8.5" />
         <g class="lm-leaf">
-          <path d="M33.6 8 Q38 0.8 47.5 2.8 Q43.5 10.4 33.6 8Z" />
-          <path class="lm-vein" d="M34.8 7.5 Q40.5 4.8 46 3.6" />
+          <path d="M33.6 9.5 Q38 2.3 47.5 4.3 Q43.5 11.9 33.6 9.5Z" />
+          <path class="lm-vein" d="M34.8 9 Q40.5 6.3 46 5.1" />
         </g>
         <path
           class="lm-peel"
-          d="M6 30 Q8 26 12 24.5 Q17 13 32 13 Q47 13 52 24.5 Q56 26 58 30 Q56 34 52 35.5 Q47 47 32 47 Q17 47 12 35.5 Q8 34 6 30Z"
+          d="M5 33 Q7 29.5 11 28.5 Q15 15 32 15 Q49 15 53 28.5 Q57 29.5 59 33 Q57 36.5 53 37.5 Q49 51 32 51 Q15 51 11 37.5 Q7 36.5 5 33Z"
         />
-        <path class="lm-shine" d="M16.5 21.5 Q21.5 16 29 15.6" />
-        <g class="lm-pores">
-          <circle cx="45" cy="21" r="0.7" />
-          <circle cx="48.5" cy="27" r="0.7" />
-          <circle cx="44" cy="41" r="0.7" />
-          <circle cx="19" cy="39" r="0.7" />
-          <circle cx="14.5" cy="30.5" r="0.7" />
-          <circle cx="36" cy="44" r="0.7" />
-        </g>
-        <ellipse class="lm-cheek" cx="19" cy="34.5" rx="2.8" ry="1.6" />
-        <ellipse class="lm-cheek" cx="45" cy="34.5" rx="2.8" ry="1.6" />
+        <path class="lm-shine" d="M16 24 Q20.5 18.5 27.5 17.4" />
 
-        {asleep ? (
-          <g class="lm-face">
-            <path d="M21.5 28.5 Q25 31.4 28.5 28.5" />
-            <g class="lm-sleep-eye">
-              <path d="M35.5 28.5 Q39 31.4 42.5 28.5" />
-            </g>
-            {/* Hover: it cracks one eye open. */}
-            <g class="lm-peek">
-              <ellipse class="lm-white" cx="39" cy="28.4" rx="4" ry="3" />
-              <circle class="lm-pupil" cx="39.4" cy="28.8" r="1.8" />
-            </g>
-            <ellipse class="lm-snore" cx="32" cy="36" rx="1.4" ry="1.2" />
-          </g>
-        ) : (
-          <g class="lm-face">
-            <g class="lm-brows">
-              <path d="M21 21.2 Q25 19.2 28.5 20.8" />
-              <path d="M35.5 20.8 Q39 19.2 43 21.2" />
-            </g>
+        {/* The whole face shifts a little toward the pointer, like turning to look. */}
+        <g class="lm-face">
+          <ellipse class="lm-cheek" cx="20" cy="37.6" rx="3.3" ry="2" />
+          <ellipse class="lm-cheek" cx="44" cy="37.6" rx="3.3" ry="2" />
+          {face === "idle" && (
             <g class="lm-eyes">
-              <ellipse class="lm-white" cx="25" cy="28" rx="4.3" ry="4.8" />
-              <ellipse class="lm-white" cx="39" cy="28" rx="4.3" ry="4.8" />
-              <g class="lm-pupils">
-                <circle class="lm-pupil" cx="25.4" cy="28.6" r="2.3" />
-                <circle class="lm-pupil" cx="39.4" cy="28.6" r="2.3" />
-                <circle class="lm-glint" cx="26.3" cy="27.5" r="0.8" />
-                <circle class="lm-glint" cx="40.3" cy="27.5" r="0.8" />
+              <ellipse class="lm-eye" cx="25.5" cy="32" rx="2.5" ry="3.1" />
+              <ellipse class="lm-eye" cx="38.5" cy="32" rx="2.5" ry="3.1" />
+              <circle class="lm-glint" cx="26.4" cy="30.8" r="1" />
+              <circle class="lm-glint" cx="39.4" cy="30.8" r="1" />
+              <circle class="lm-glint" cx="24.9" cy="33.3" r="0.45" />
+              <circle class="lm-glint" cx="37.9" cy="33.3" r="0.45" />
+            </g>
+          )}
+          {face === "happy" && <path class="lm-line" d="M23 32.8 Q25.5 29.6 28 32.8 M36 32.8 Q38.5 29.6 41 32.8" />}
+          {face === "surprised" && (
+            <g>
+              <ellipse class="lm-eye" cx="25.5" cy="31.6" rx="2.7" ry="3.7" />
+              <ellipse class="lm-eye" cx="38.5" cy="31.6" rx="2.7" ry="3.7" />
+              <circle class="lm-glint" cx="26.5" cy="30.2" r="1.1" />
+              <circle class="lm-glint" cx="39.5" cy="30.2" r="1.1" />
+            </g>
+          )}
+          {asleep && (
+            <g>
+              <path class="lm-line" d="M23 31.6 Q25.5 34 28 31.6" />
+              <path class="lm-line lm-sleep-eye" d="M36 31.6 Q38.5 34 41 31.6" />
+              {/* Hover a napping lemon: it cracks one eye open. */}
+              <g class="lm-peek">
+                <ellipse class="lm-eye" cx="38.5" cy="32.3" rx="2.4" ry="2" />
+                <circle class="lm-glint" cx="39.3" cy="31.6" r="0.8" />
               </g>
             </g>
-            <path class="lm-mouth lm-smile" d="M28 35 Q32 38.8 36 35" />
-            <ellipse class="lm-mouth lm-open" cx="32" cy="36.2" rx="2.6" ry="2.1" />
-          </g>
-        )}
+          )}
+
+          {asleep ? (
+            <ellipse class="lm-tongue" cx="32" cy="37.2" rx="0.9" ry="0.8" />
+          ) : face === "surprised" ? (
+            <ellipse class="lm-tongue" cx="32" cy="37.6" rx="1.3" ry="1.5" />
+          ) : (
+            <>
+              <path class="lm-line lm-smile" d="M30 36.8 Q32 38.8 34 36.8" />
+              <ellipse class="lm-tongue lm-talk" cx="32" cy="37.5" rx="1.9" ry="1.5" />
+            </>
+          )}
+        </g>
       </g>
     </svg>
   );
@@ -231,8 +239,8 @@ export function Lemon({ onWake, ...stats }: Stats & { onWake: () => void }) {
         const dy = e.clientY - (r.top + r.height * 0.45);
         const len = Math.hypot(dx, dy) || 1;
         // The drawing is mirrored when walking left, so mirror the gaze too.
-        node.style.setProperty("--px", ((dx / len) * 1.7 * (dir === -1 ? -1 : 1)).toFixed(2));
-        node.style.setProperty("--py", ((dy / len) * 1.5).toFixed(2));
+        node.style.setProperty("--px", ((dx / len) * 1.2 * (dir === -1 ? -1 : 1)).toFixed(2));
+        node.style.setProperty("--py", ((dy / len) * 1).toFixed(2));
       });
     };
     addEventListener("pointermove", onMove);
@@ -354,7 +362,7 @@ export function Lemon({ onWake, ...stats }: Stats & { onWake: () => void }) {
         )}
         {/* Re-keyed on every hop so the bounce animation restarts. */}
         <div class={hop ? "lm-hop" : undefined} key={hop}>
-          <LemonSvg asleep={!awake && mood !== "surprised"} />
+          <LemonSvg face={!awake && mood !== "surprised" ? "asleep" : mood} />
         </div>
       </div>
     </>

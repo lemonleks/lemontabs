@@ -47,9 +47,10 @@
   opacity: 0.85;
 }
 
-.lm-pores circle {
-  fill: #c99400;
-  opacity: 0.45;
+.lm-nub {
+  fill: #f4c820;
+  stroke: #c99400;
+  stroke-width: 1;
 }
 
 .lm-stem {
@@ -71,150 +72,76 @@
 }
 
 .lm-leaf {
-  transform-origin: 33.6px 8px;
+  transform-origin: 33.6px 9.5px;
   animation: lm-leaf-sway 3.2s ease-in-out infinite;
 }
 
 .lm-cheek {
-  fill: #ff8f7f;
+  fill: #ff9a8a;
   opacity: 0.55;
 }
 
-.lm-face path {
-  fill: none;
-  stroke: #3a2f00;
-  stroke-width: 1.4;
-  stroke-linecap: round;
-}
-
-.lm-white {
-  fill: #fff;
-  stroke: #3a2f00;
-  stroke-width: 0.9;
-}
-
-.lm-pupil {
-  fill: #2d2400;
+.lm-eye {
+  fill: #3b2a12;
 }
 
 .lm-glint {
   fill: #fff;
 }
 
-.lm-brows path {
-  stroke: #6b5200;
-  stroke-width: 1.4;
-}
-
-.lm-open,
-.lm-snore {
-  fill: #8a2a24;
-  stroke: #3a2f00;
-  stroke-width: 0.9;
-}
-
-.lm-arm path,
-.lm-leg path {
+.lm-line {
   fill: none;
-  stroke: #7a5d00;
-  stroke-width: 2.4;
+  stroke: #3b2a12;
+  stroke-width: 1.6;
   stroke-linecap: round;
 }
 
-.lm-arm circle {
-  fill: #fad62a;
-  stroke: #c99400;
-  stroke-width: 1;
-}
-
-.lm-leg ellipse {
-  fill: #3a2f00;
+.lm-tongue {
+  fill: #a8402f;
 }
 
 .lm-arm-l {
-  transform-origin: 11px 32px;
+  transform-origin: 11px 36px;
 }
 
 .lm-arm-r {
-  transform-origin: 53px 32px;
-}
-
-.lm-leg-a {
-  transform-origin: 26px 45px;
-}
-
-.lm-leg-b {
-  transform-origin: 38px 45px;
+  transform-origin: 53px 36px;
 }
 
 .lm-body {
-  transform-origin: 32px 47px;
+  transform-origin: 32px 51px;
 }
 
-/* ----- eyes and mouth ----- */
+/* ----- face ----- */
 
-/* Pupils follow the pointer through --px/--py, set from JS without re-rendering. */
-.lm-pupils {
+/* The face drifts toward the pointer through --px/--py, set from JS without re-rendering. */
+.lm-face {
   transform: translate(calc(var(--px) * 1px), calc(var(--py) * 1px));
-  transition: transform 0.12s ease-out;
+  transition: transform 0.25s ease-out;
 }
 
 .lm-eyes {
-  transform-origin: 32px 28px;
-  animation: lm-blink 4.8s infinite;
+  transform-origin: 32px 32px;
+  animation: lm-blink 5s infinite;
 }
 
-.lm-open {
+.lm-talk {
   opacity: 0;
 }
 
-/* Talking: the mouth flaps while the bubble is up. */
-.lm-talking .lm-open {
-  animation: lm-talk 0.32s steps(1) infinite;
+/* Talking: the mouth opens and closes while the bubble is up. */
+.lm-talking .lm-talk {
+  animation: lm-talk 0.34s steps(1) infinite;
 }
 
 .lm-talking .lm-smile {
-  animation: lm-talk 0.32s steps(1) infinite reverse;
-}
-
-.lm-mood-happy .lm-brows {
-  transform: translateY(-1.6px);
-}
-
-.lm-mood-happy .lm-smile {
-  stroke-width: 1.8;
-}
-
-.lm-mood-surprised .lm-brows {
-  transform: translateY(-2.4px);
-}
-
-.lm-mood-surprised .lm-open {
-  opacity: 1;
-}
-
-.lm-mood-surprised .lm-smile {
-  opacity: 0;
-}
-
-.lm-mood-surprised .lm-eyes {
-  animation: none;
-  transform: scale(1.08);
-}
-
-.lm-brows {
-  transition: transform 0.15s;
+  animation: lm-talk 0.34s steps(1) infinite reverse;
 }
 
 /* ----- poses ----- */
 
 .lm-sleeping .lm-svg {
-  transform: rotate(-9deg) translateY(4px);
-}
-
-.lm-sleeping .lm-legs,
-.lm-sleeping .lm-arm {
-  display: none;
+  transform: rotate(-8deg) translateY(3px);
 }
 
 .lm-sleeping .lm-body {
@@ -236,17 +163,24 @@
 }
 
 .lm-moving .lm-body {
-  animation: lm-bob 0.2s ease-in-out infinite alternate;
+  animation: lm-bob 0.22s ease-in-out infinite alternate;
 }
 
-.lm-moving .lm-leg-a,
-.lm-moving .lm-arm-r {
-  animation: lm-swing 0.4s ease-in-out infinite alternate;
+/* Little steps: the feet take turns lifting. */
+.lm-moving .lm-foot-a {
+  animation: lm-step 0.44s ease-in-out infinite;
 }
 
-.lm-moving .lm-leg-b,
+.lm-moving .lm-foot-b {
+  animation: lm-step 0.44s ease-in-out infinite 0.22s;
+}
+
 .lm-moving .lm-arm-l {
-  animation: lm-swing 0.4s ease-in-out infinite alternate-reverse;
+  animation: lm-swing 0.44s ease-in-out infinite alternate;
+}
+
+.lm-moving .lm-arm-r {
+  animation: lm-swing 0.44s ease-in-out infinite alternate-reverse;
 }
 
 .lm-awake:not(.lm-moving) .lm-body {
@@ -255,7 +189,7 @@
 
 /* Hover while it's awake: it waves. */
 .lm-awake:hover .lm-arm-r {
-  animation: lm-wave 0.5s ease-in-out infinite alternate;
+  animation: lm-wave 0.45s ease-in-out infinite alternate;
 }
 
 .lm-hop {
@@ -401,19 +335,31 @@
 
 @keyframes lm-swing {
   from {
-    transform: rotate(20deg);
+    transform: rotate(14deg);
   }
   to {
-    transform: rotate(-20deg);
+    transform: rotate(-14deg);
   }
 }
 
+/* The right nub lifts up beside the head and wiggles. */
 @keyframes lm-wave {
   from {
-    transform: rotate(-110deg);
+    transform: rotate(-95deg);
   }
   to {
-    transform: rotate(-150deg);
+    transform: rotate(-125deg);
+  }
+}
+
+@keyframes lm-step {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-2px);
   }
 }
 
