@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { applyOrder, deriveView, sortBySitePlan, useSnapshot, type Card, type Tab } from "./model";
 import { BookmarksCard, GROUP_COLORS, GroupCard, SiteCard, type Actions, type Bookmark } from "./Cards";
 import { Icon } from "./icons";
-import { Kitty } from "./Kitty";
+import { Lemon } from "./Lemon";
 import { applyTheme, KEEP_SITES_TOGETHER, prefs, type Scope, type Theme } from "./settings";
 
 interface Ask {
@@ -244,7 +244,7 @@ export function App() {
       </main>
 
       {ask && <Confirm ask={ask} onDone={() => setAsk(null)} />}
-      <Kitty staleCount={view.staleIds.size} onWake={() => setShowStale(true)} />
+      <Lemon staleCount={view.staleIds.size} onWake={() => setShowStale(true)} />
     </>
   );
 }

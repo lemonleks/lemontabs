@@ -288,7 +288,7 @@ kbd {
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1180px) {
   .tool span:not(.badge) {
     display: none;
   }

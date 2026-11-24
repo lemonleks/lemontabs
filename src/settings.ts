@@ -24,11 +24,11 @@ export const prefs = {
   setSkipConfirm(key: string) {
     localStorage.setItem(`skipConfirm.${key}`, "1");
   },
-  get kittyHintDismissed(): boolean {
-    return localStorage.getItem("kittyHintDismissed") === "1";
+  get staleHintDismissed(): boolean {
+    return localStorage.getItem("staleHintDismissed") === "1";
   },
-  dismissKittyHint() {
-    localStorage.setItem("kittyHintDismissed", "1");
+  dismissStaleHint() {
+    localStorage.setItem("staleHintDismissed", "1");
   },
 };
 
