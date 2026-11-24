@@ -9,6 +9,7 @@ export interface Actions {
   groupSite(card: Card): void;
   updateGroup(id: number, change: chrome.tabGroups.UpdateProperties): void;
   ungroup(card: Card): void;
+  sortGroup(card: Card): void;
 }
 
 export const favicon = (url = "") => `/_favicon/?pageUrl=${encodeURIComponent(url)}&size=32`;
@@ -169,6 +170,9 @@ export function GroupCard(props: CardProps) {
         <div class="card-actions">
           <button class="icon-btn" title="Rename" onClick={() => setEditing(true)}>
             <Icon name="pencil" size={14} />
+          </button>
+          <button class="icon-btn" title="Sort this group by site" onClick={() => actions.sortGroup(card)}>
+            <Icon name="layers" size={15} />
           </button>
           <button class="icon-btn" title="Ungroup" onClick={() => actions.ungroup(card)}>
             <Icon name="ungroup" size={15} />

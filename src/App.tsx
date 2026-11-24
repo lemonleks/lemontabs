@@ -106,6 +106,12 @@ export function App() {
       const ids = snap.tabs.filter((t) => t.groupId === card.group!.id).map((t) => t.id!);
       void chrome.tabs.ungroup(ids as [number, ...number[]]);
     },
+    async sortGroup(card: Card) {
+      const tabs = await chrome.tabs.query({ groupId: card.group!.id });
+      const order = sortBySitePlan(tabs);
+      if (!order) return setNote("This group is already sorted by site");
+      await applyOrder(order, tabs);
+    },
   };
 
   const removeDuplicates = () =>
@@ -126,7 +132,7 @@ export function App() {
       message: "Reorders tabs in this window alphabetically by site. Pinned tabs and each tab group are sorted in place, so no tab changes group.",
       confirm: "Sort",
       skipKey: "sort",
-      run: () => void applyOrder(order, [...tabs].sort((a, b) => a.index - b.index).map((t) => t.id!)),
+      run: () => void applyOrder(order, tabs),
     });
   };
 

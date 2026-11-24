@@ -186,12 +186,17 @@ export function sortBySitePlan(tabs: Tab[]): number[] | null {
   return order.every((id, i) => id === strip[i].id) ? null : order;
 }
 
-/** Applies a sortBySitePlan with the fewest chrome.tabs.move calls a left-to-right pass allows. */
-export async function applyOrder(order: number[], current: number[]) {
-  const strip = [...current];
+/**
+ * Applies a sortBySitePlan to `tabs` (a whole window, or one group's contiguous range) with the fewest
+ * chrome.tabs.move calls a left-to-right pass allows. Moves stay inside the range, so group membership holds.
+ */
+export async function applyOrder(order: number[], tabs: Tab[]) {
+  const sorted = [...tabs].sort((a, b) => a.index - b.index);
+  const start = sorted[0].index;
+  const strip = sorted.map((t) => t.id!);
   for (let i = 0; i < order.length; i++) {
     if (strip[i] === order[i]) continue;
-    await chrome.tabs.move(order[i], { index: i });
+    await chrome.tabs.move(order[i], { index: start + i });
     strip.splice(strip.indexOf(order[i]), 1);
     strip.splice(i, 0, order[i]);
   }
