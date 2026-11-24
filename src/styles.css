@@ -987,6 +987,32 @@ main {
   line-height: 1.5;
 }
 
+.confirm-tabs {
+  max-height: 180px;
+  margin: 0 0 12px;
+  padding: 4px;
+  overflow: auto;
+  list-style: none;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+}
+
+.confirm-tabs li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 26px;
+  padding: 0 6px;
+  font-size: 13px;
+}
+
+.confirm-tabs span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .confirm .muted {
   color: var(--muted);
   font-size: 12.5px;

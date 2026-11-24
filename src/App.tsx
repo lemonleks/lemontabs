@@ -5,6 +5,7 @@ import { placesOf, remember, reopen, restorePlaces, undoLast } from "./undo";
 import { Icon } from "./icons";
 import { Lemon } from "./Lemon";
 import { Digits } from "./Digits";
+import { Favicon } from "./favicons";
 import { applyTheme, KEEP_SITES_TOGETHER, prefs, type Scope, type Theme } from "./settings";
 
 interface Ask {
@@ -12,6 +13,8 @@ interface Ask {
   message: string;
   confirm: string;
   skipKey: string;
+  /** Tabs the action affects, listed in the dialog. */
+  tabs?: Tab[];
   run: () => void;
 }
 
@@ -157,7 +160,8 @@ export function App({ initial }: { initial: Snapshot }) {
   const removeDuplicates = () =>
     confirm({
       title: `Close ${plural(view.duplicateIds.length, "duplicate")}?`,
-      message: "Keeps one tab per address (the active one, when there is one).",
+      message: "Keeps one tab per address (the active one, when there is one). These go:",
+      tabs: byIds(view.duplicateIds),
       confirm: "Close duplicates",
       skipKey: "dupes",
       run: () => close(view.duplicateIds),
@@ -420,8 +424,18 @@ function Confirm({ ask, onDone }: { ask: Ask; onDone: () => void }) {
       <form method="dialog">
         <h2>{ask.title}</h2>
         <p>{ask.message}</p>
+        {ask.tabs && (
+          <ul class="confirm-tabs">
+            {ask.tabs.map((t) => (
+              <li key={t.id} title={t.url}>
+                <Favicon url={t.url} />
+                <span>{t.title || t.url}</span>
+              </li>
+            ))}
+          </ul>
+        )}
         <p class="muted">
-          Closed something by mistake? <kbd>{isMac ? "⌘" : "Ctrl"}</kbd> <kbd>Shift</kbd> <kbd>T</kbd> brings it back.
+          Closed something by mistake? <kbd>{isMac ? "⌘" : "Ctrl"}</kbd> <kbd>Z</kbd> brings it back.
         </p>
         <label class="check">
           <input type="checkbox" checked={skip} onChange={(e) => setSkip(e.currentTarget.checked)} />

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "lemontabs",
   "short_name": "lemontabs",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "New tab dashboard: all your open tabs at a glance, grouped by site and by Chrome tab group.",
   "permissions": ["tabs", "tabGroups", "bookmarks", "favicon", "storage", "sessions"],
   "background": { "service_worker": "background.js", "type": "module" },
