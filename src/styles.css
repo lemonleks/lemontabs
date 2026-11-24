@@ -132,12 +132,15 @@ kbd {
 }
 
 .tally-num {
-  font: 400 64px/0.78 var(--display);
-  letter-spacing: -0.02em;
-  font-variant-numeric: lining-nums tabular-nums;
+  display: flex;
   padding: 0 4px;
   /* highlighter stroke */
   background: linear-gradient(transparent 58%, var(--accent-soft) 58% 94%, transparent 94%);
+}
+
+.digits {
+  display: block;
+  overflow: visible;
 }
 
 .tally-text {

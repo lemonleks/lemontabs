@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 import type { Card, Tab } from "./model";
 import { Icon } from "./icons";
+import { Favicon } from "./favicons";
 
 export interface Actions {
   activate(tab: Tab): void;
@@ -13,8 +14,6 @@ export interface Actions {
   ungroup(card: Card): void;
   sortGroup(card: Card): void;
 }
-
-export const favicon = (url = "") => `/_favicon/?pageUrl=${encodeURIComponent(url)}&size=32`;
 
 // Fixed metrics give every card's height from its tab count alone, so masonry needs no DOM measuring.
 // Keep in sync with --head / --row in styles.css.
@@ -140,7 +139,7 @@ function TabRow({ tab, stale, actions, onLast }: RowProps) {
       onAnimationEnd={(e) => leaving && e.target === e.currentTarget && actions.close([tab.id!])}
     >
       <button class="row-main" title={`${tab.title}\n${tab.url}`} onClick={() => actions.activate(tab)}>
-        <img class="fav" src={favicon(tab.url || tab.pendingUrl)} width={16} height={16} alt="" loading="lazy" decoding="async" />
+        <Favicon url={tab.url || tab.pendingUrl} />
         <span class="row-title">{tab.title || tab.url}</span>
         {tab.audible && <Icon name="volume" size={13} />}
         {tab.pinned && <Icon name="pin" size={13} />}
@@ -193,7 +192,7 @@ export function SiteCard(props: CardProps) {
   return (
     <section class={`card${exit.leaving ? " leaving" : ""}`} style={exit.style} onAnimationEnd={exit.onAnimationEnd}>
       <header class="card-head">
-        <img class="fav" src={favicon(card.tabs[0].url)} width={16} height={16} alt="" />
+        <Favicon url={card.tabs[0].url} />
         <h3 class="card-title" title={card.title}>{card.title}</h3>
         <span class="count">{card.tabs.length}</span>
         <div class="card-actions">
@@ -295,7 +294,7 @@ export function GroupCard(props: CardProps) {
       {collapsed ? (
         <button class="strip" title="Expand" onClick={() => actions.updateGroup(group.id, { collapsed: false })}>
           {card.tabs.slice(0, 14).map((t) => (
-            <img key={t.id} class="fav" src={favicon(t.url)} width={16} height={16} alt="" />
+            <Favicon key={t.id} url={t.url} />
           ))}
           {card.tabs.length > 14 && <span class="count">+{card.tabs.length - 14}</span>}
         </button>
@@ -324,7 +323,7 @@ export function BookmarksCard({ items }: { items: Bookmark[] }) {
         {items.map((b) => (
           <li key={b.id} class="row">
             <button class="row-main" title={b.url} onClick={() => chrome.tabs.update({ url: b.url })}>
-              <img class="fav" src={favicon(b.url)} width={16} height={16} alt="" loading="lazy" />
+              <Favicon url={b.url} />
               <span class="row-title">{b.title || b.url}</span>
             </button>
           </li>

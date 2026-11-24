@@ -3,6 +3,7 @@ import { applyOrder, deriveView, sortBySitePlan, useSnapshot, type Card, type Sn
 import { bookmarksHeight, BookmarksCard, cardHeight, GROUP_COLORS, GroupCard, Masonry, SiteCard, type Actions, type Bookmark } from "./Cards";
 import { Icon } from "./icons";
 import { Lemon } from "./Lemon";
+import { Digits } from "./Digits";
 import { applyTheme, KEEP_SITES_TOGETHER, prefs, type Scope, type Theme } from "./settings";
 
 interface Ask {
@@ -148,7 +149,9 @@ export function App({ initial }: { initial: Snapshot }) {
     <>
       <header class="top">
         <div class="tally" aria-live="polite">
-          <span class="tally-num">{view.total}</span>
+          <span class="tally-num">
+            <Digits value={view.total} size={64} />
+          </span>
           <span class="tally-text">
             <b>open {view.total === 1 ? "tab" : "tabs"}</b>
             <span>

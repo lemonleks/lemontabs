@@ -2,6 +2,7 @@ import { render } from "preact";
 import "./styles.css";
 import { App } from "./App";
 import { load } from "./model";
+import { saveFavicons } from "./favicons";
 
 const initial = await load();
 
@@ -14,7 +15,7 @@ render(<App initial={initial} />, app);
 // or mid-dialog (the next page opens without either).
 const saveShell = () => {
   if (!document.querySelector("dialog[open], .search input:not(:placeholder-shown)")) {
-    localStorage.setItem("shell", app.innerHTML);
+    localStorage.setItem("shell", saveFavicons(app));
   }
 };
 document.addEventListener("visibilitychange", () => document.hidden && saveShell());
