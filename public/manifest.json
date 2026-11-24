@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Lemon Tabs",
+  "short_name": "lemontabs",
+  "version": "1.0.0",
+  "description": "New tab dashboard: every open tab grouped by site and by Chrome tab group.",
+  "permissions": ["tabs", "tabGroups", "bookmarks", "favicon", "storage"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "chrome_url_overrides": { "newtab": "index.html" },
+  "icons": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" }
+}
