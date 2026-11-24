@@ -287,9 +287,15 @@ interface MenuAt {
 function GroupMenu({ tab, anchor, groups, tabs, onDone }: MenuAt & { groups: chrome.tabGroups.TabGroup[]; tabs: Tab[]; onDone: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    // The row button is only shown on hover; keep it laid out while the menu is open, or the
+    // menu loses its anchor (and jumps to the corner) as soon as the pointer leaves the row.
     anchor.style.setProperty("anchor-name", "--group-menu");
+    anchor.dataset.open = "";
     ref.current!.showPopover();
-    return () => anchor.style.removeProperty("anchor-name");
+    return () => {
+      anchor.style.removeProperty("anchor-name");
+      delete anchor.dataset.open;
+    };
   }, []);
   const pick = (move: () => Promise<unknown>) => {
     void move();

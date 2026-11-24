@@ -684,6 +684,7 @@ main {
 }
 
 .row:hover .row-group,
+.row-group[data-open],
 .row-group:focus-visible {
   display: grid;
 }
