@@ -464,7 +464,7 @@ main {
   border-radius: 14px;
   background: var(--surface);
   content-visibility: auto;
-  contain-intrinsic-size: auto 200px;
+  contain-intrinsic-size: auto 200px; /* overridden inline with the computed height */
   animation: rise 0.32s cubic-bezier(0.2, 0.7, 0.3, 1) both;
   transition:
     box-shadow 0.2s,
@@ -480,6 +480,36 @@ main {
   from {
     opacity: 0;
     transform: translateY(6px);
+  }
+}
+
+/* Exit: collapse in place so the cards below in the column glide up instead of jumping. */
+.card.leaving {
+  animation: card-out 0.24s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes card-out {
+  to {
+    height: 0;
+    margin-bottom: -14px; /* swallow the column gap too */
+    border-width: 0;
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+.row.leaving {
+  overflow: hidden;
+  pointer-events: none;
+  animation: row-out 0.18s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes row-out {
+  to {
+    height: 0;
+    opacity: 0;
+    transform: translateX(10px);
   }
 }
 

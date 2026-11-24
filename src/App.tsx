@@ -79,13 +79,13 @@ export function App() {
       window.close();
     },
     close,
-    closeAll(card: Card) {
+    closeAll(card: Card, animateOut: () => void) {
       confirm({
         title: `Close ${plural(card.tabs.length, "tab")}?`,
         message: card.group ? `Every tab in “${card.group.title || "Unnamed group"}”${query ? " matching the search" : ""}.` : `Every ${card.title} tab${query ? " matching the search" : ""}.`,
         confirm: "Close",
         skipKey: "closeAll",
-        run: () => close(card.tabs.map((t) => t.id!)),
+        run: animateOut,
       });
     },
     async groupSite(card: Card) {

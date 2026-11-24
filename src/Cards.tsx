@@ -6,7 +6,8 @@ import { Icon } from "./icons";
 export interface Actions {
   activate(tab: Tab): void;
   close(ids: number[]): void;
-  closeAll(card: Card): void;
+  /** Asks for confirmation, then calls `close` (the card animates out and closes its tabs). */
+  closeAll(card: Card, close: () => void): void;
   groupSite(card: Card): void;
   updateGroup(id: number, change: chrome.tabGroups.UpdateProperties): void;
   ungroup(card: Card): void;
@@ -111,9 +112,21 @@ function age(ms: number) {
   return `${Math.floor(days / 30)}mo`;
 }
 
-function TabRow({ tab, stale, actions }: { tab: Tab; stale: boolean; actions: Actions }) {
+interface RowProps {
+  tab: Tab;
+  stale: boolean;
+  actions: Actions;
+  /** Closing this row empties the card: the card animates out instead. */
+  onLast?: () => void;
+}
+
+function TabRow({ tab, stale, actions, onLast }: RowProps) {
+  const [leaving, setLeaving] = useState(false);
   return (
-    <li class={`row${stale ? " stale" : ""}${tab.discarded ? " asleep" : ""}`}>
+    <li
+      class={`row${stale ? " stale" : ""}${tab.discarded ? " asleep" : ""}${leaving ? " leaving" : ""}`}
+      onAnimationEnd={(e) => leaving && e.target === e.currentTarget && actions.close([tab.id!])}
+    >
       <button class="row-main" title={`${tab.title}\n${tab.url}`} onClick={() => actions.activate(tab)}>
         <img class="fav" src={favicon(tab.url || tab.pendingUrl)} width={16} height={16} alt="" loading="lazy" decoding="async" />
         <span class="row-title">{tab.title || tab.url}</span>
@@ -121,7 +134,7 @@ function TabRow({ tab, stale, actions }: { tab: Tab; stale: boolean; actions: Ac
         {tab.pinned && <Icon name="pin" size={13} />}
         {stale && <span class="age">{age(tab.lastAccessed!)}</span>}
       </button>
-      <button class="row-x" aria-label="Close tab" title="Close tab" onClick={() => actions.close([tab.id!])}>
+      <button class="row-x" aria-label="Close tab" title="Close tab" onClick={() => (onLast ? onLast() : setLeaving(true))}>
         <Icon name="x" size={14} />
       </button>
     </li>
@@ -135,20 +148,38 @@ interface CardProps {
   actions: Actions;
 }
 
-function TabList({ card, stale, actions }: CardProps) {
+function TabList({ card, stale, actions, onLast }: CardProps & { onLast: () => void }) {
   return (
     <ul class="rows">
       {card.tabs.map((t) => (
-        <TabRow key={t.id} tab={t} stale={stale.has(t.id!)} actions={actions} />
+        <TabRow key={t.id} tab={t} stale={stale.has(t.id!)} actions={actions} onLast={card.tabs.length === 1 ? onLast : undefined} />
       ))}
     </ul>
   );
 }
 
+/**
+ * Cards size themselves from their rows, so a closing row collapses and everything below glides up.
+ * A card that is going away gets its height pinned and animates to zero before its tabs are closed.
+ */
+function useCardExit({ card, searching, actions }: CardProps) {
+  const [leaving, setLeaving] = useState(false);
+  const height = cardHeight(card, searching);
+  return {
+    leaving,
+    leave: () => setLeaving(true),
+    style: leaving ? { height: `${height}px` } : { containIntrinsicSize: `auto ${height}px` },
+    onAnimationEnd: (e: AnimationEvent) => {
+      if (leaving && e.target === e.currentTarget) actions.close(card.tabs.map((t) => t.id!));
+    },
+  };
+}
+
 export function SiteCard(props: CardProps) {
-  const { card, searching, actions } = props;
+  const { card, actions } = props;
+  const exit = useCardExit(props);
   return (
-    <section class="card" style={{ height: `${cardHeight(card, searching)}px` }}>
+    <section class={`card${exit.leaving ? " leaving" : ""}`} style={exit.style} onAnimationEnd={exit.onAnimationEnd}>
       <header class="card-head">
         <img class="fav" src={favicon(card.tabs[0].url)} width={16} height={16} alt="" />
         <h3 class="card-title" title={card.title}>{card.title}</h3>
@@ -159,12 +190,12 @@ export function SiteCard(props: CardProps) {
               <Icon name="folderPlus" size={15} />
             </button>
           )}
-          <button class="icon-btn danger" title={`Close all ${card.tabs.length}`} onClick={() => actions.closeAll(card)}>
+          <button class="icon-btn danger" title={`Close all ${card.tabs.length}`} onClick={() => actions.closeAll(card, exit.leave)}>
             <Icon name="x" size={15} />
           </button>
         </div>
       </header>
-      <TabList {...props} />
+      <TabList {...props} onLast={exit.leave} />
     </section>
   );
 }
@@ -173,6 +204,7 @@ export const GROUP_COLORS: `${chrome.tabGroups.Color}`[] = ["grey", "blue", "red
 
 export function GroupCard(props: CardProps) {
   const { card, searching, actions } = props;
+  const exit = useCardExit(props);
   const group = card.group!;
   const [editing, setEditing] = useState(false);
   const collapsed = group.collapsed && !searching;
@@ -184,7 +216,12 @@ export function GroupCard(props: CardProps) {
   };
 
   return (
-    <section class="card group" data-color={group.color} style={{ height: `${cardHeight(card, searching)}px` }}>
+    <section
+      class={`card group${exit.leaving ? " leaving" : ""}`}
+      data-color={group.color}
+      style={exit.style}
+      onAnimationEnd={exit.onAnimationEnd}
+    >
       <header class="card-head">
         <button
           class="icon-btn chevron"
@@ -238,7 +275,7 @@ export function GroupCard(props: CardProps) {
           <button class="icon-btn" title="Ungroup" onClick={() => actions.ungroup(card)}>
             <Icon name="ungroup" size={15} />
           </button>
-          <button class="icon-btn danger" title="Close group" onClick={() => actions.closeAll(card)}>
+          <button class="icon-btn danger" title="Close group" onClick={() => actions.closeAll(card, exit.leave)}>
             <Icon name="x" size={15} />
           </button>
         </div>
@@ -251,7 +288,7 @@ export function GroupCard(props: CardProps) {
           {card.tabs.length > 14 && <span class="count">+{card.tabs.length - 14}</span>}
         </button>
       ) : (
-        <TabList {...props} />
+        <TabList {...props} onLast={exit.leave} />
       )}
     </section>
   );
@@ -265,7 +302,7 @@ export interface Bookmark {
 
 export function BookmarksCard({ items }: { items: Bookmark[] }) {
   return (
-    <section class="card bookmarks" style={{ height: `${bookmarksHeight(items.length)}px` }}>
+    <section class="card bookmarks" style={{ containIntrinsicSize: `auto ${bookmarksHeight(items.length)}px` }}>
       <header class="card-head">
         <Icon name="star" size={15} />
         <h3 class="card-title">Bookmarks</h3>
