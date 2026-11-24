@@ -23,5 +23,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mv lemontabs.zip "lemontabs-$GITHUB_REF_NAME.zip"
+          sed "s/VERSION/$GITHUB_REF_NAME/" .github/release-notes.md > notes.md
           gh release create "$GITHUB_REF_NAME" "lemontabs-$GITHUB_REF_NAME.zip" \
-            --title "lemontabs $GITHUB_REF_NAME" --generate-notes
+            --title "lemontabs $GITHUB_REF_NAME" --notes-file notes.md --generate-notes
