@@ -377,7 +377,13 @@ export function App({ initial }: { initial: Snapshot }) {
           onDone={() => setMenu((m) => (m?.tab.id === menu.tab.id ? null : m))}
         />
       )}
-      <Lemon staleCount={view.staleIds.size} onWake={() => setShowStale(true)} />
+      <Lemon
+        total={view.total}
+        staleCount={view.staleIds.size}
+        dupes={view.duplicateIds.length}
+        windows={view.windows}
+        onWake={() => setShowStale(true)}
+      />
       <FooterTip />
     </>
   );

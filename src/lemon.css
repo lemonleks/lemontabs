@@ -1,10 +1,18 @@
+/* ---------- Lemon, the mascot ---------- */
+
 .lm {
   position: fixed;
-  bottom: 16px;
+  bottom: 8px;
   z-index: 50;
-  width: 40px;
-  height: 36px;
+  width: 56px;
+  height: 56px;
   cursor: pointer;
+  --px: 0;
+  --py: 0;
+}
+
+.lm-sleeping {
+  bottom: 17px;
 }
 
 .lm-svg {
@@ -16,121 +24,281 @@
   transform: scaleX(-1);
 }
 
+/* SVG parts rotate around points given in drawing units. */
+.lm-svg g,
+.lm-svg path,
+.lm-svg ellipse {
+  transform-box: view-box;
+}
+
+/* ----- drawing ----- */
+
 .lm-peel {
-  fill: #f6cd1e;
-  stroke: #c99a00;
+  fill: url(#lm-skin);
+  stroke: #c99400;
   stroke-width: 1.2;
 }
 
 .lm-shine {
   fill: none;
-  stroke: #fff6c4;
-  stroke-width: 1.6;
+  stroke: #fffbe0;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.lm-pores circle {
+  fill: #c99400;
+  opacity: 0.45;
+}
+
+.lm-stem {
+  fill: none;
+  stroke: #7a5a1c;
+  stroke-width: 1.8;
   stroke-linecap: round;
 }
 
-.lm-leaf {
-  fill: #5fa83a;
+.lm-leaf path {
+  fill: #63ad3f;
   stroke: #3f7d22;
   stroke-width: 0.8;
 }
 
-.lm-face {
+.lm-leaf .lm-vein {
   fill: none;
-  stroke: #3a2f00;
-  stroke-width: 1.3;
-  stroke-linecap: round;
+  stroke-width: 0.7;
 }
 
-.lm-eyes circle {
-  fill: #3a2f00;
-  stroke: none;
+.lm-leaf {
+  transform-origin: 33.6px 8px;
+  animation: lm-leaf-sway 3.2s ease-in-out infinite;
 }
 
-.lm-eyes {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: lm-blink 4.6s infinite;
-}
-
-.lm-blush {
-  fill: #ff8a7a;
+.lm-cheek {
+  fill: #ff8f7f;
   opacity: 0.55;
 }
 
-.lm-leg {
-  stroke: #7a5d00;
-  stroke-width: 2.2;
+.lm-face path {
+  fill: none;
+  stroke: #3a2f00;
+  stroke-width: 1.4;
   stroke-linecap: round;
-  transform-box: fill-box;
-  transform-origin: top center;
+}
+
+.lm-white {
+  fill: #fff;
+  stroke: #3a2f00;
+  stroke-width: 0.9;
+}
+
+.lm-pupil {
+  fill: #2d2400;
+}
+
+.lm-glint {
+  fill: #fff;
+}
+
+.lm-brows path {
+  stroke: #6b5200;
+  stroke-width: 1.4;
+}
+
+.lm-open,
+.lm-snore {
+  fill: #8a2a24;
+  stroke: #3a2f00;
+  stroke-width: 0.9;
+}
+
+.lm-arm path,
+.lm-leg path {
+  fill: none;
+  stroke: #7a5d00;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+.lm-arm circle {
+  fill: #fad62a;
+  stroke: #c99400;
+  stroke-width: 1;
+}
+
+.lm-leg ellipse {
+  fill: #3a2f00;
+}
+
+.lm-arm-l {
+  transform-origin: 11px 32px;
+}
+
+.lm-arm-r {
+  transform-origin: 53px 32px;
+}
+
+.lm-leg-a {
+  transform-origin: 26px 45px;
+}
+
+.lm-leg-b {
+  transform-origin: 38px 45px;
 }
 
 .lm-body {
-  transform-box: fill-box;
-  transform-origin: bottom center;
+  transform-origin: 32px 47px;
 }
 
-.lm-moving .lm-leg-a {
-  animation: lm-step 0.36s ease-in-out infinite alternate;
+/* ----- eyes and mouth ----- */
+
+/* Pupils follow the pointer through --px/--py, set from JS without re-rendering. */
+.lm-pupils {
+  transform: translate(calc(var(--px) * 1px), calc(var(--py) * 1px));
+  transition: transform 0.12s ease-out;
 }
 
-.lm-moving .lm-leg-b {
-  animation: lm-step 0.36s ease-in-out infinite alternate-reverse;
+.lm-eyes {
+  transform-origin: 32px 28px;
+  animation: lm-blink 4.8s infinite;
 }
 
-.lm-moving .lm-body {
-  animation: lm-bob 0.18s ease-in-out infinite alternate;
+.lm-open {
+  opacity: 0;
 }
 
-.lm:not(.lm-moving):not(.lm-sleeping) .lm-body {
-  animation: lm-breathe 2.6s ease-in-out infinite;
+/* Talking: the mouth flaps while the bubble is up. */
+.lm-talking .lm-open {
+  animation: lm-talk 0.32s steps(1) infinite;
 }
 
-.lm-sleeping {
-  bottom: 21px;
+.lm-talking .lm-smile {
+  animation: lm-talk 0.32s steps(1) infinite reverse;
 }
 
-.lm-sleeping .lm-legs {
+.lm-mood-happy .lm-brows {
+  transform: translateY(-1.6px);
+}
+
+.lm-mood-happy .lm-smile {
+  stroke-width: 1.8;
+}
+
+.lm-mood-surprised .lm-brows {
+  transform: translateY(-2.4px);
+}
+
+.lm-mood-surprised .lm-open {
+  opacity: 1;
+}
+
+.lm-mood-surprised .lm-smile {
+  opacity: 0;
+}
+
+.lm-mood-surprised .lm-eyes {
+  animation: none;
+  transform: scale(1.08);
+}
+
+.lm-brows {
+  transition: transform 0.15s;
+}
+
+/* ----- poses ----- */
+
+.lm-sleeping .lm-svg {
+  transform: rotate(-9deg) translateY(4px);
+}
+
+.lm-sleeping .lm-legs,
+.lm-sleeping .lm-arm {
   display: none;
 }
 
-.lm-sleeping .lm-svg {
-  transform: rotate(-10deg);
-}
-
 .lm-sleeping .lm-body {
-  animation: lm-breathe 3.2s ease-in-out infinite;
+  animation: lm-breathe 3.4s ease-in-out infinite;
 }
 
-/* The leaf it naps on. */
+.lm-peek {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+/* Hovering a napping lemon: it cracks one eye open. */
+.lm-sleeping:hover .lm-peek {
+  opacity: 1;
+}
+
+.lm-sleeping:hover .lm-sleep-eye {
+  opacity: 0;
+}
+
+.lm-moving .lm-body {
+  animation: lm-bob 0.2s ease-in-out infinite alternate;
+}
+
+.lm-moving .lm-leg-a,
+.lm-moving .lm-arm-r {
+  animation: lm-swing 0.4s ease-in-out infinite alternate;
+}
+
+.lm-moving .lm-leg-b,
+.lm-moving .lm-arm-l {
+  animation: lm-swing 0.4s ease-in-out infinite alternate-reverse;
+}
+
+.lm-awake:not(.lm-moving) .lm-body {
+  animation: lm-breathe 2.6s ease-in-out infinite;
+}
+
+/* Hover while it's awake: it waves. */
+.lm-awake:hover .lm-arm-r {
+  animation: lm-wave 0.5s ease-in-out infinite alternate;
+}
+
+.lm-hop {
+  transform-origin: 50% 100%;
+  animation: lm-hop 0.55s cubic-bezier(0.3, 0.6, 0.4, 1);
+}
+
+/* ----- the leaf it naps on ----- */
+
 .lm-bed {
   position: fixed;
-  left: 14px;
-  bottom: 14px;
+  left: 8px;
+  bottom: 10px;
   z-index: 49;
-  width: 58px;
-  height: 14px;
+  width: 72px;
+  height: 18px;
   border-radius: 50%;
-  background: linear-gradient(180deg, #86c75a, #4f9130);
-  box-shadow: 0 2px 4px rgb(0 0 0 / 0.18);
-  pointer-events: none;
+  background: radial-gradient(120% 140% at 40% 20%, #9ad46c, #4f9130 70%);
+  box-shadow: 0 2px 5px rgb(0 0 0 / 0.18);
 }
 
 .lm-bed::after {
   content: "";
   position: absolute;
   top: 50%;
-  left: 8px;
-  right: 8px;
+  left: 10px;
+  right: 10px;
   height: 1px;
   background: rgb(255 255 255 / 0.45);
 }
 
+.lm-bed-empty {
+  cursor: pointer;
+}
+
+.lm-bed-empty:hover {
+  filter: brightness(1.08);
+}
+
 .lm-zzz {
   position: absolute;
-  top: -12px;
-  right: -10px;
+  top: -6px;
+  right: -6px;
   color: var(--muted);
   font-size: 11px;
   font-weight: 700;
@@ -146,9 +314,11 @@
   font-size: 15px;
 }
 
+/* ----- speech ----- */
+
 .lm-bubble {
   position: absolute;
-  bottom: calc(100% + 12px);
+  bottom: calc(100% + 8px);
   left: 50%;
   width: max-content;
   max-width: 260px;
@@ -177,13 +347,13 @@
 
 /* Near the left edge the bubble hangs to the right of the lemon instead of centering. */
 .lm-anchored {
-  left: -6px;
+  left: -2px;
   translate: none;
   padding-right: 30px;
 }
 
 .lm-anchored::after {
-  left: 24px;
+  left: 26px;
 }
 
 .lm-close {
@@ -207,35 +377,79 @@
   background: rgb(42 34 0 / 0.26);
 }
 
+/* ----- keyframes ----- */
+
 @keyframes lm-blink {
   0%,
-  94%,
+  95%,
   100% {
     transform: scaleY(1);
   }
   97% {
-    transform: scaleY(0.1);
+    transform: scaleY(0.08);
   }
 }
 
-@keyframes lm-step {
+@keyframes lm-talk {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes lm-swing {
   from {
-    transform: rotate(18deg);
+    transform: rotate(20deg);
   }
   to {
-    transform: rotate(-18deg);
+    transform: rotate(-20deg);
+  }
+}
+
+@keyframes lm-wave {
+  from {
+    transform: rotate(-110deg);
+  }
+  to {
+    transform: rotate(-150deg);
   }
 }
 
 @keyframes lm-bob {
   to {
-    transform: translateY(-1.2px);
+    transform: translateY(-1.4px) rotate(1.5deg);
   }
 }
 
 @keyframes lm-breathe {
   50% {
-    transform: scale(1.03, 0.97);
+    transform: scale(1.025, 0.975);
+  }
+}
+
+@keyframes lm-leaf-sway {
+  50% {
+    transform: rotate(-7deg);
+  }
+}
+
+@keyframes lm-hop {
+  0% {
+    transform: translateY(0) scale(1, 1);
+  }
+  15% {
+    transform: translateY(0) scale(1.12, 0.86);
+  }
+  45% {
+    transform: translateY(-18px) scale(0.94, 1.08);
+  }
+  75% {
+    transform: translateY(0) scale(1.08, 0.92);
+  }
+  100% {
+    transform: translateY(0) scale(1, 1);
   }
 }
 
