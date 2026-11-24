@@ -17,8 +17,8 @@ export const favicon = (url = "") => `/_favicon/?pageUrl=${encodeURIComponent(ur
 // Fixed metrics let the grid place cards (masonry-style) from tab counts alone: no DOM measuring.
 // Keep in sync with --head / --row in styles.css.
 const HEAD = 44;
-const ROW = 32;
-const PAD = 12;
+const ROW = 26;
+const PAD = 8;
 const GAP = 14;
 const UNIT = 4;
 const LIMIT = 8;

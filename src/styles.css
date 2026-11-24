@@ -16,7 +16,7 @@
 
   /* Card metrics: Cards.tsx computes grid spans from these. */
   --head: 44px;
-  --row: 32px;
+  --row: 26px;
 
   --font: "Onest Variable", system-ui, sans-serif;
   --display: "Instrument Serif", Georgia, serif;
@@ -570,7 +570,7 @@ main {
 
 .rows {
   margin: 0;
-  padding: 6px;
+  padding: 4px 6px;
   list-style: none;
 }
 
@@ -622,8 +622,8 @@ main {
   display: grid;
   place-items: center;
   flex: none;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   margin-right: 3px;
   padding: 0;
   border: 0;
@@ -661,7 +661,7 @@ main {
 .more {
   flex: none;
   height: var(--row);
-  margin: -6px 6px 0;
+  margin: -4px 6px 0;
   padding: 0 0 0 34px;
   border: 0;
   border-radius: 8px;
