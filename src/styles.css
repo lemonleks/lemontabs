@@ -465,7 +465,6 @@ main {
   background: var(--surface);
   content-visibility: auto;
   contain-intrinsic-size: auto 200px; /* overridden inline with the computed height */
-  animation: rise 0.32s cubic-bezier(0.2, 0.7, 0.3, 1) both;
   transition:
     box-shadow 0.2s,
     border-color 0.2s;
@@ -474,13 +473,6 @@ main {
 .card:hover {
   border-color: color-mix(in oklab, var(--ink) 14%, var(--line));
   box-shadow: var(--shadow);
-}
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
 }
 
 /* Exit: collapse in place so the cards below in the column glide up instead of jumping. */
