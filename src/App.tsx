@@ -79,6 +79,7 @@ export function App({ initial }: { initial: Snapshot }) {
     },
     close,
     closeAll(card: Card, animateOut: () => void) {
+      if (card.tabs.length === 1) return animateOut(); // same as the row's ×, nothing to confirm
       confirm({
         title: `Close ${plural(card.tabs.length, "tab")}?`,
         message: card.group ? `Every tab in “${card.group.title || "Unnamed group"}”${query ? " matching the search" : ""}.` : `Every ${card.title} tab${query ? " matching the search" : ""}.`,
