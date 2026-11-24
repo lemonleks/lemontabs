@@ -13,8 +13,6 @@
     "preact": "^11.2.0"
   },
   "devDependencies": {
-    "@fontsource-variable/onest": "^5.2.0",
-    "@fontsource/instrument-serif": "^5.2.0",
     "@preact/preset-vite": "^2.10.6",
     "@types/chrome": "^0.3.7",
     "typescript": "^5.9.0",
