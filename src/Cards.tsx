@@ -145,7 +145,6 @@ function TabRow({ tab, stale, actions, onLast }: RowProps) {
         e.dataTransfer!.setData(DRAG_TYPE, String(tab.id));
         e.dataTransfer!.effectAllowed = "move";
       }}
-      onAnimationEnd={(e) => leaving && e.target === e.currentTarget && actions.close([tab.id!])}
     >
       <button class="row-main" title={`${tab.title}\n${tab.url}`} onClick={() => actions.activate(tab)}>
         <Favicon url={tab.url || tab.pendingUrl} />
@@ -161,7 +160,17 @@ function TabRow({ tab, stale, actions, onLast }: RowProps) {
       >
         <Icon name="folderPlus" size={14} />
       </button>
-      <button class="row-x" aria-label="Close tab" title="Close tab" onClick={() => (onLast ? onLast() : setLeaving(true))}>
+      <button
+        class="row-x"
+        aria-label="Close tab"
+        title="Close tab"
+        onClick={() => {
+          if (onLast) return onLast();
+          // The animation is cosmetic: the close runs on a timer even if this row unmounts first.
+          setLeaving(true);
+          setTimeout(() => actions.close([tab.id!]), ROW_EXIT_MS);
+        }}
+      >
         <Icon name="x" size={14} />
       </button>
     </li>
@@ -232,20 +241,27 @@ export function PinnedStrip({ tabs, actions }: { tabs: Tab[]; actions: Actions }
   );
 }
 
+/** Match the row-out / card-out animation durations in styles.css. */
+const ROW_EXIT_MS = 180;
+const CARD_EXIT_MS = 240;
+
 /**
  * Cards size themselves from their rows, so a closing row collapses and everything below glides up.
- * A card that is going away gets its height pinned and animates to zero before its tabs are closed.
+ * A card that is going away gets its height pinned and animates to zero; its tabs close on a timer,
+ * not on animationend, so a re-render that drops the card mid-animation can't cancel the close.
  */
 function useCardExit({ card, searching, actions }: CardProps) {
   const [leaving, setLeaving] = useState(false);
   const height = cardHeight(card, searching);
   return {
     leaving,
-    leave: () => setLeaving(true),
-    style: leaving ? { height: `${height}px` } : { containIntrinsicSize: `auto ${height}px` },
-    onAnimationEnd: (e: AnimationEvent) => {
-      if (leaving && e.target === e.currentTarget) actions.close(card.tabs.map((t) => t.id!));
+    leave: () => {
+      if (leaving) return;
+      setLeaving(true);
+      const ids = card.tabs.map((t) => t.id!);
+      setTimeout(() => actions.close(ids), CARD_EXIT_MS);
     },
+    style: leaving ? { height: `${height}px` } : { containIntrinsicSize: `auto ${height}px` },
   };
 }
 
@@ -257,7 +273,6 @@ export function SiteCard(props: CardProps) {
     <section
       class={`card${exit.leaving ? " leaving" : ""}${drop.over ? " drop" : ""}`}
       style={exit.style}
-      onAnimationEnd={exit.onAnimationEnd}
       {...drop.props}
     >
       <header class="card-head">
@@ -289,9 +304,18 @@ export function GroupCard(props: CardProps) {
   const anchor = `--pal${group.id}`;
   const drop = useDrop(group.id, actions);
 
-  const commit = (value: string) => {
+  // One rename session ends exactly once: Enter, Escape (discard) and blur can all fire for it, and
+  // a blur after Escape must not save what was typed.
+  const ended = useRef(false);
+  const startEditing = () => {
+    ended.current = false;
+    setEditing(true);
+  };
+  const finish = (value: string | null) => {
+    if (ended.current) return;
+    ended.current = true;
     setEditing(false);
-    if (value !== group.title) actions.updateGroup(group.id, { title: value });
+    if (value !== null && value !== group.title) actions.updateGroup(group.id, { title: value });
   };
 
   return (
@@ -299,7 +323,6 @@ export function GroupCard(props: CardProps) {
       class={`card group${exit.leaving ? " leaving" : ""}${drop.over ? " drop" : ""}`}
       data-color={group.color}
       style={exit.style}
-      onAnimationEnd={exit.onAnimationEnd}
       {...drop.props}
     >
       <header class="card-head">
@@ -334,19 +357,19 @@ export function GroupCard(props: CardProps) {
             placeholder="Group name"
             ref={(el) => el?.focus()}
             onKeyDown={(e) => {
-              if (e.key === "Enter") commit(e.currentTarget.value.trim());
-              if (e.key === "Escape") setEditing(false);
+              if (e.key === "Enter") finish(e.currentTarget.value.trim());
+              if (e.key === "Escape") finish(null);
             }}
-            onBlur={(e) => editing && commit(e.currentTarget.value.trim())}
+            onBlur={(e) => finish(e.currentTarget.value.trim())}
           />
         ) : (
-          <h3 class="card-title" title="Double-click to rename" onDblClick={() => setEditing(true)}>
+          <h3 class="card-title" title="Double-click to rename" onDblClick={startEditing}>
             {group.title || <span class="unnamed">Unnamed group</span>}
           </h3>
         )}
         <span class="count">{card.tabs.length}</span>
         <div class="card-actions">
-          <button class="icon-btn" title="Rename" onClick={() => setEditing(true)}>
+          <button class="icon-btn" title="Rename" onClick={startEditing}>
             <Icon name="pencil" size={14} />
           </button>
           <button class="icon-btn" title="Sort this group by site" onClick={() => actions.sortGroup(card)}>

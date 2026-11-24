@@ -12,7 +12,8 @@ chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
     tabId,
     setTimeout(() => {
       timers.delete(tabId);
-      void arrange(tabId).catch(() => {}); // tab closed or dragged meanwhile; nothing to do
+      // Usually the tab closed or moved meanwhile; log anything else instead of hiding it.
+      void arrange(tabId).catch((error) => console.warn("keep-together move skipped", error));
     }, 150),
   );
 });

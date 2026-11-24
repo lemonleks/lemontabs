@@ -19,14 +19,26 @@ const store: Store = (() => {
     return { u: {}, d: [] };
   }
 })();
-const pending = new Set<string>();
+/** Last attempt per page, so uncached icons (pages with no icon, still loading) retry every 30 s, not every render. */
+const tried = new Map<string, number>();
 
 const chromeFavicon = (url: string) => `/_favicon/?pageUrl=${encodeURIComponent(url)}&size=32`;
 
-async function cache(url: string) {
-  const blob = await (await fetch(chromeFavicon(url))).blob();
+async function dataUrl(url: string) {
+  const res = await fetch(chromeFavicon(url));
+  const blob = await res.blob();
+  if (!res.ok || !blob.type.startsWith("image/")) throw new Error(`no icon for ${url}`);
   const bytes = new Uint8Array(await blob.arrayBuffer()); // a favicon is a few KB: fine to spread
-  const data = `data:${blob.type};base64,${btoa(String.fromCharCode(...bytes))}`;
+  return `data:${blob.type};base64,${btoa(String.fromCharCode(...bytes))}`;
+}
+
+// Chrome's generic globe, returned for pages whose icon it doesn't know yet (still loading, never
+// loaded). Caching that would pin the globe on the page forever, so it's left uncached and retried.
+const placeholder = dataUrl("about:blank").catch(() => "");
+
+async function cache(url: string) {
+  const data = await dataUrl(url);
+  if (data === (await placeholder)) return;
   let i = store.d.indexOf(data);
   if (i < 0) i = store.d.push(data) - 1;
   store.u[url] = i;
@@ -34,9 +46,9 @@ async function cache(url: string) {
 
 export function Favicon({ url = "" }: { url?: string }) {
   const i = store.u[url];
-  if (i === undefined && url && !pending.has(url)) {
-    pending.add(url);
-    void cache(url).catch(() => {});
+  if (i === undefined && url && Date.now() - (tried.get(url) ?? 0) > 30_000) {
+    tried.set(url, Date.now());
+    void cache(url).catch((error) => console.debug(error));
   }
   return <img class="fav" data-favicon={url} src={i === undefined ? chromeFavicon(url) : store.d[i]} width={16} height={16} alt="" />;
 }

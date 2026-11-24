@@ -1,4 +1,4 @@
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { siteKey } from "./site";
 import type { Scope } from "./settings";
 
@@ -15,7 +15,7 @@ const OWN_ORIGIN = location.origin;
 
 export async function load(): Promise<Snapshot> {
   const [tabs, groups, win] = await Promise.all([
-    chrome.tabs.query({}),
+    chrome.tabs.query({ windowType: "normal" }), // app/popup windows can't hold groups or be sorted
     chrome.tabGroups.query({}),
     chrome.windows.getCurrent(),
   ]);
@@ -28,13 +28,27 @@ export async function load(): Promise<Snapshot> {
  * Live browser state, starting from a snapshot fetched before the first render. Event bursts
  * (a page load fires a dozen onUpdated) collapse into one re-query.
  */
-export function useSnapshot(initial: Snapshot): [Snapshot, (ids: number[]) => void] {
+export function useSnapshot(initial: Snapshot) {
   const [snap, setSnap] = useState(initial);
+  // Tabs closed optimistically: hidden from every snapshot until Chrome reports them removed, so a
+  // query that was already in flight can't flash them back.
+  const removing = useRef(new Set<number>());
+  const refreshRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     let timer = 0;
     let stale = false;
-    const refresh = () => void load().then(setSnap);
+    let latest = 0;
+    const refresh = () => {
+      const seq = ++latest;
+      load()
+        .then((s) => {
+          if (seq !== latest) return; // a newer query was started; this one is outdated
+          setSnap({ ...s, tabs: s.tabs.filter((t) => !removing.current.has(t.id!)) });
+        })
+        .catch((error) => console.error("tab refresh failed", error));
+    };
+    refreshRef.current = refresh;
     const schedule = () => {
       if (document.hidden) {
         stale = true;
@@ -43,6 +57,7 @@ export function useSnapshot(initial: Snapshot): [Snapshot, (ids: number[]) => vo
       clearTimeout(timer);
       timer = setTimeout(refresh, 60);
     };
+    const onRemoved = (id: number) => removing.current.delete(id);
     const onVisible = () => {
       if (!document.hidden && stale) {
         stale = false;
@@ -64,18 +79,30 @@ export function useSnapshot(initial: Snapshot): [Snapshot, (ids: number[]) => vo
       chrome.tabGroups.onMoved,
     ] as chrome.events.Event<() => void>[];
     refresh(); // catch changes between the prefetch and subscribing; same data re-renders as a no-op diff
+    chrome.tabs.onRemoved.addListener(onRemoved);
     for (const e of events) e.addListener(schedule);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       clearTimeout(timer);
+      chrome.tabs.onRemoved.removeListener(onRemoved);
       for (const e of events) e.removeListener(schedule);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
 
-  const drop = (ids: number[]) =>
-    setSnap((s) => ({ ...s, tabs: s.tabs.filter((t) => !ids.includes(t.id!)) }));
-  return [snap, drop];
+  return {
+    snap,
+    /** Hides tabs right away, before Chrome confirms the close. */
+    drop(ids: number[]) {
+      for (const id of ids) removing.current.add(id);
+      setSnap((s) => ({ ...s, tabs: s.tabs.filter((t) => !ids.includes(t.id!)) }));
+    },
+    /** The close failed: show those tabs again and re-read the truth. */
+    undrop(ids: number[]) {
+      for (const id of ids) removing.current.delete(id);
+      refreshRef.current();
+    },
+  };
 }
 
 export interface Card {
@@ -154,7 +181,8 @@ export function deriveView(snap: Snapshot, scope: Scope, query: string): View {
   const duplicateIds: number[] = [];
   for (const list of byUrl.values()) {
     if (list.length < 2) continue;
-    const keep = list.find((t) => t.active && t.windowId === cur) ?? list.find((t) => t.active) ?? list[0];
+    // Keep the pinned copy (pinned tabs are deliberate), else the one in use.
+    const keep = list.find((t) => t.pinned) ?? list.find((t) => t.active && t.windowId === cur) ?? list.find((t) => t.active) ?? list[0];
     for (const t of list) if (t !== keep) duplicateIds.push(t.id!);
   }
 

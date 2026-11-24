@@ -22,17 +22,21 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const isMac = navigator.platform.startsWith("Mac");
 
 export function App({ initial }: { initial: Snapshot }) {
-  const [snap, drop] = useSnapshot(initial);
+  const { snap, drop, undrop } = useSnapshot(initial);
   const [scope, setScope] = useState<Scope>(prefs.scope);
   const [query, setQuery] = useState("");
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [showStale, setShowStale] = useState(false);
   const [ask, setAsk] = useState<Ask | null>(null);
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState<{ text: string; at: number } | null>(null);
   const [menu, setMenu] = useState<MenuAt | null>(null);
   const search = useRef<HTMLInputElement>(null);
 
   const view = useMemo(() => deriveView(snap, scope, query), [snap, scope, query]);
+  // Handlers made during one render can run much later (after a confirm dialog, after an await):
+  // they read tabs from here, never from the render they were created in.
+  const latest = useRef({ snap, view });
+  latest.current = { snap, view };
 
   useEffect(() => {
     const q = query.trim();
@@ -51,6 +55,7 @@ export function App({ initial }: { initial: Snapshot }) {
     const onKey = (e: KeyboardEvent) => {
       const input = search.current!;
       if (e.key === "Escape") {
+        if (document.querySelector("dialog[open], [popover]:popover-open")) return; // that Escape closes it
         setQuery("");
         input.blur();
         return;
@@ -58,7 +63,7 @@ export function App({ initial }: { initial: Snapshot }) {
       const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
       if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "z" && !typing && !document.querySelector("dialog[open]")) {
         e.preventDefault();
-        void undoLast().then(setNote);
+        void undoLast().then(say);
         return;
       }
       if (typing || e.metaKey || e.ctrlKey || e.altKey || document.querySelector("dialog[open]")) return;
@@ -71,24 +76,47 @@ export function App({ initial }: { initial: Snapshot }) {
 
   useEffect(() => {
     if (!note) return;
-    const t = setTimeout(() => setNote(""), 2500);
+    const t = setTimeout(() => setNote(null), 2500);
     return () => clearTimeout(t);
   }, [note]);
 
+  // The menu's row was re-rendered away (tab moved, closed): its anchor is gone, so is the menu.
+  useEffect(() => {
+    if (menu && !menu.anchor.isConnected) setMenu(null);
+  }, [snap]);
+
+  const say = (text: string) => setNote({ text, at: Date.now() });
+  /** Runs a Chrome call; on failure tells the user instead of failing silently. True on success. */
+  const attempt = async (what: string, work: () => Promise<unknown>) => {
+    try {
+      await work();
+      return true;
+    } catch (error) {
+      console.error(`couldn't ${what}`, error);
+      say(`Couldn't ${what}: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    }
+  };
   const confirm = (a: Ask) => (prefs.skipConfirm(a.skipKey) ? a.run() : setAsk(a));
-  const byIds = (ids: number[]) => snap.tabs.filter((t) => ids.includes(t.id!));
+  const byIds = (ids: number[]) => latest.current.snap.tabs.filter((t) => ids.includes(t.id!));
   const close = (ids: number[]) => {
-    const closed = closedTabsOf(byIds(ids));
-    drop(ids);
-    void chrome.tabs.remove(ids);
-    remember(`close ${plural(ids.length, "tab")}`, () => reopen(closed));
+    const tabs = byIds(ids); // already-gone tabs would make tabs.remove reject the whole batch
+    if (!tabs.length) return;
+    const live = tabs.map((t) => t.id!);
+    const closed = closedTabsOf(tabs);
+    drop(live);
+    void attempt(`close ${plural(live.length, "tab")}`, () => chrome.tabs.remove(live)).then((ok) =>
+      ok ? remember(`close ${plural(live.length, "tab")}`, () => reopen(closed)) : undrop(live),
+    );
   };
 
   const actions: Actions = {
     async activate(tab: Tab) {
-      await chrome.tabs.update(tab.id!, { active: true });
-      await chrome.windows.update(tab.windowId, { focused: true });
-      window.close();
+      const ok = await attempt("switch to the tab", async () => {
+        await chrome.tabs.update(tab.id!, { active: true });
+        await chrome.windows.update(tab.windowId, { focused: true });
+      });
+      if (ok) window.close();
     },
     close,
     closeAll(card: Card, animateOut: () => void) {
@@ -102,44 +130,54 @@ export function App({ initial }: { initial: Snapshot }) {
       });
     },
     async groupSite(card: Card) {
-      const tabs = card.tabs.filter((t) => !t.pinned);
+      const tabs = byIds(card.tabs.map((t) => t.id!)).filter((t) => !t.pinned);
+      if (!tabs.length) return;
       const places = placesOf(tabs);
       // Land the group in the window that already holds most of these tabs.
       const perWindow = new Map<number, number>();
       for (const t of tabs) perWindow.set(t.windowId, (perWindow.get(t.windowId) ?? 0) + 1);
       const windowId = [...perWindow].sort((a, b) => b[1] - a[1])[0][0];
-      const groupId = await chrome.tabs.group({ tabIds: tabs.map((t) => t.id!) as [number, ...number[]], createProperties: { windowId } });
       // Same site, same color every time; skip grey (index 0), it reads as "no group".
       const hash = [...card.title].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
-      await chrome.tabGroups.update(groupId, { title: card.title, color: GROUP_COLORS[1 + (hash % (GROUP_COLORS.length - 1))] });
-      remember(`group ${card.title}`, () => restorePlaces(places));
+      const ok = await attempt(`group ${card.title}`, async () => {
+        const groupId = await chrome.tabs.group({ tabIds: tabs.map((t) => t.id!) as [number, ...number[]], createProperties: { windowId } });
+        await chrome.tabGroups.update(groupId, { title: card.title, color: GROUP_COLORS[1 + (hash % (GROUP_COLORS.length - 1))] });
+      });
+      if (ok) remember(`group ${card.title}`, () => restorePlaces(places));
     },
-    updateGroup(id, change) {
-      const group = snap.groups.find((g) => g.id === id);
+    async updateGroup(id, change) {
+      const group = latest.current.snap.groups.find((g) => g.id === id);
       if (!group) return;
       const before = Object.fromEntries(Object.keys(change).map((k) => [k, group[k as keyof typeof group]]));
-      void chrome.tabGroups.update(id, change);
-      remember("group change", () => chrome.tabGroups.update(id, before));
+      if (await attempt("change the group", () => chrome.tabGroups.update(id, change))) {
+        remember("group change", () => chrome.tabGroups.update(id, before));
+      }
     },
-    ungroup(card: Card) {
+    async ungroup(card: Card) {
       const group = card.group!;
-      const tabs = snap.tabs.filter((t) => t.groupId === group.id);
+      const tabs = latest.current.snap.tabs.filter((t) => t.groupId === group.id);
+      if (!tabs.length) return;
+      const ids = tabs.map((t) => t.id!);
       const places = placesOf(tabs);
-      void chrome.tabs.ungroup(tabs.map((t) => t.id!) as [number, ...number[]]);
+      if (!(await attempt(`ungroup ${group.title || "the group"}`, () => chrome.tabs.ungroup(ids as [number, ...number[]])))) return;
       remember(`ungroup ${group.title || "group"}`, async () => {
-        // The old group is gone once emptied: regroup into a new one dressed the same, then reposition.
-        const id = await chrome.tabs.group({ tabIds: tabs.map((t) => t.id!) as [number, ...number[]] });
+        // The old group is gone once emptied: regroup what is still open into a new one dressed the same.
+        const still = (await chrome.tabs.query({})).filter((t) => ids.includes(t.id!)).map((t) => t.id!);
+        if (!still.length) throw new Error("those tabs are closed");
+        const id = await chrome.tabs.group({ tabIds: still as [number, ...number[]] });
         await chrome.tabGroups.update(id, { title: group.title, color: group.color, collapsed: group.collapsed });
-        await restorePlaces(places.map((p) => ({ ...p, groupId: id })));
+        await restorePlaces(places.filter((p) => still.includes(p.id)).map((p) => ({ ...p, groupId: id })));
       });
     },
     async sortGroup(card: Card) {
-      const tabs = await chrome.tabs.query({ groupId: card.group!.id });
-      const order = sortBySitePlan(tabs);
-      if (!order) return setNote("This group is already sorted by site");
-      const places = placesOf(tabs);
-      await applyOrder(order, tabs);
-      remember("sort group", () => restorePlaces(places));
+      await attempt("sort the group", async () => {
+        const tabs = await chrome.tabs.query({ groupId: card.group!.id });
+        const order = sortBySitePlan(tabs);
+        if (!order) return say("This group is already sorted by site");
+        const places = placesOf(tabs);
+        await applyOrder(order, tabs);
+        remember("sort group", () => restorePlaces(places));
+      });
     },
     groupMenu(tab, anchor) {
       setMenu({ tab, anchor });
@@ -149,38 +187,49 @@ export function App({ initial }: { initial: Snapshot }) {
       if (!tabs.length) return;
       const tabIds = tabs.map((t) => t.id!) as [number, ...number[]];
       const places = placesOf(tabs);
-      if (target === null) await chrome.tabs.ungroup(tabIds);
-      else if (target === "new") await chrome.tabs.group({ tabIds, createProperties: { windowId: tabs[0].windowId } });
-      else await chrome.tabs.group({ groupId: target, tabIds });
-      const name = typeof target === "number" ? `move to ${snap.groups.find((g) => g.id === target)?.title || "group"}` : target ? "new group" : "remove from group";
-      remember(name, () => restorePlaces(places));
+      const name =
+        typeof target === "number"
+          ? `move to ${latest.current.snap.groups.find((g) => g.id === target)?.title || "the group"}`
+          : target
+            ? "make a new group"
+            : "remove from the group";
+      const ok = await attempt(name, async () => {
+        if (target === null) await chrome.tabs.ungroup(tabIds);
+        else if (target === "new") await chrome.tabs.group({ tabIds, createProperties: { windowId: tabs[0].windowId } });
+        else await chrome.tabs.group({ groupId: target, tabIds });
+      });
+      if (ok) remember(name, () => restorePlaces(places));
     },
   };
 
   const removeDuplicates = () =>
     confirm({
       title: `Close ${plural(view.duplicateIds.length, "duplicate")}?`,
-      message: "Keeps one tab per address (the active one, when there is one). These go:",
+      message: "Keeps one tab per address (the pinned one, else the active one). These go:",
       tabs: byIds(view.duplicateIds),
       confirm: "Close duplicates",
       skipKey: "dupes",
-      run: () => close(view.duplicateIds),
+      run: () => close(latest.current.view.duplicateIds), // recomputed: tabs may have changed while the dialog was open
     });
 
   const sortWindow = async () => {
     const tabs = await chrome.tabs.query({ currentWindow: true });
-    const order = sortBySitePlan(tabs);
-    if (!order) return setNote("This window is already sorted by site");
+    if (!sortBySitePlan(tabs)) return say("This window is already sorted by site");
     confirm({
       title: "Sort this window by site?",
       message: "Reorders tabs in this window alphabetically by site. Pinned tabs and each tab group are sorted in place, so no tab changes group.",
       confirm: "Sort",
       skipKey: "sort",
-      run: () => {
-        const places = placesOf(tabs);
-        void applyOrder(order, tabs);
-        remember("sort window", () => restorePlaces(places));
-      },
+      // Plan against the window as it is now, not as it was when the dialog opened.
+      run: () =>
+        void attempt("sort this window", async () => {
+          const now = await chrome.tabs.query({ currentWindow: true });
+          const order = sortBySitePlan(now);
+          if (!order) return;
+          const places = placesOf(now);
+          await applyOrder(order, now);
+          remember("sort window", () => restorePlaces(places));
+        }),
     });
   };
 
@@ -260,7 +309,11 @@ export function App({ initial }: { initial: Snapshot }) {
         </div>
       </header>
 
-      {note && <div class="note" role="status">{note}</div>}
+      {note && (
+        <div class="note" role="status" key={note.at}>
+          {note.text}
+        </div>
+      )}
 
       <main>
         {view.pinned.length > 0 && <PinnedStrip tabs={view.pinned} actions={actions} />}
