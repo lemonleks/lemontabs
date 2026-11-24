@@ -13,7 +13,7 @@ export interface Snapshot {
 
 const OWN_ORIGIN = location.origin;
 
-async function load(): Promise<Snapshot> {
+export async function load(): Promise<Snapshot> {
   const [tabs, groups, win] = await Promise.all([
     chrome.tabs.query({}),
     chrome.tabGroups.query({}),
@@ -24,9 +24,12 @@ async function load(): Promise<Snapshot> {
   return { tabs: tabs.filter((t) => !own(t)), groups, windowId: win.id! };
 }
 
-/** Live browser state. Event bursts (a page load fires a dozen onUpdated) collapse into one re-query. */
-export function useSnapshot(): [Snapshot | null, (ids: number[]) => void] {
-  const [snap, setSnap] = useState<Snapshot | null>(null);
+/**
+ * Live browser state, starting from a snapshot fetched before the first render. Event bursts
+ * (a page load fires a dozen onUpdated) collapse into one re-query.
+ */
+export function useSnapshot(initial: Snapshot): [Snapshot, (ids: number[]) => void] {
+  const [snap, setSnap] = useState(initial);
 
   useEffect(() => {
     let timer = 0;
@@ -60,7 +63,7 @@ export function useSnapshot(): [Snapshot | null, (ids: number[]) => void] {
       chrome.tabGroups.onRemoved,
       chrome.tabGroups.onMoved,
     ] as chrome.events.Event<() => void>[];
-    refresh();
+    refresh(); // catch changes between the prefetch and subscribing; same data re-renders as a no-op diff
     for (const e of events) e.addListener(schedule);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
@@ -71,7 +74,7 @@ export function useSnapshot(): [Snapshot | null, (ids: number[]) => void] {
   }, []);
 
   const drop = (ids: number[]) =>
-    setSnap((s) => s && { ...s, tabs: s.tabs.filter((t) => !ids.includes(t.id!)) });
+    setSnap((s) => ({ ...s, tabs: s.tabs.filter((t) => !ids.includes(t.id!)) }));
   return [snap, drop];
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { applyOrder, deriveView, sortBySitePlan, useSnapshot, type Card, type Tab } from "./model";
+import { applyOrder, deriveView, sortBySitePlan, useSnapshot, type Card, type Snapshot, type Tab } from "./model";
 import { bookmarksHeight, BookmarksCard, cardHeight, GROUP_COLORS, GroupCard, Masonry, SiteCard, type Actions, type Bookmark } from "./Cards";
 import { Icon } from "./icons";
 import { Lemon } from "./Lemon";
@@ -16,8 +16,8 @@ interface Ask {
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const isMac = navigator.platform.startsWith("Mac");
 
-export function App() {
-  const [snap, drop] = useSnapshot();
+export function App({ initial }: { initial: Snapshot }) {
+  const [snap, drop] = useSnapshot(initial);
   const [scope, setScope] = useState<Scope>(prefs.scope);
   const [query, setQuery] = useState("");
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
@@ -26,7 +26,7 @@ export function App() {
   const [note, setNote] = useState("");
   const search = useRef<HTMLInputElement>(null);
 
-  const view = useMemo(() => snap && deriveView(snap, scope, query), [snap, scope, query]);
+  const view = useMemo(() => deriveView(snap, scope, query), [snap, scope, query]);
 
   useEffect(() => {
     const q = query.trim();
@@ -63,8 +63,6 @@ export function App() {
     const t = setTimeout(() => setNote(""), 2500);
     return () => clearTimeout(t);
   }, [note]);
-
-  if (!snap || !view) return null;
 
   const confirm = (a: Ask) => (prefs.skipConfirm(a.skipKey) ? a.run() : setAsk(a));
   const close = (ids: number[]) => {
