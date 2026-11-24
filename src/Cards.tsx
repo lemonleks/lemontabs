@@ -21,7 +21,6 @@ const ROW = 26;
 const PAD = 8;
 const GAP = 14;
 const UNIT = 4;
-const LIMIT = 8;
 
 function boxStyle(height: number) {
   return { height: `${height}px`, gridRowEnd: `span ${Math.ceil((height + GAP) / UNIT)}` };
@@ -58,32 +57,22 @@ interface CardProps {
   actions: Actions;
 }
 
-/** Tab list capped at LIMIT rows until expanded (search always shows all), plus its pixel height. */
-function useTabList({ card, stale, searching, actions }: CardProps) {
-  const [open, setOpen] = useState(false);
-  const capped = !searching && !open && card.tabs.length > LIMIT + 1;
-  const tabs = capped ? card.tabs.slice(0, LIMIT) : card.tabs;
-  const height = PAD + tabs.length * ROW + (capped ? ROW : 0);
+/** Every tab of the card, plus the list's pixel height for the grid span. */
+function tabList({ card, stale, actions }: CardProps) {
+  const height = PAD + card.tabs.length * ROW;
   const node = (
-    <>
-      <ul class="rows">
-        {tabs.map((t) => (
-          <TabRow key={t.id} tab={t} stale={stale.has(t.id!)} actions={actions} />
-        ))}
-      </ul>
-      {capped && (
-        <button class="more" onClick={() => setOpen(true)}>
-          Show {card.tabs.length - LIMIT} more
-        </button>
-      )}
-    </>
+    <ul class="rows">
+      {card.tabs.map((t) => (
+        <TabRow key={t.id} tab={t} stale={stale.has(t.id!)} actions={actions} />
+      ))}
+    </ul>
   );
   return { height, node };
 }
 
 export function SiteCard(props: CardProps) {
   const { card, actions } = props;
-  const list = useTabList(props);
+  const list = tabList(props);
   return (
     <section class="card" style={boxStyle(HEAD + list.height + 2)}>
       <header class="card-head">
@@ -111,7 +100,7 @@ export const GROUP_COLORS: `${chrome.tabGroups.Color}`[] = ["grey", "blue", "red
 export function GroupCard(props: CardProps) {
   const { card, searching, actions } = props;
   const group = card.group!;
-  const list = useTabList(props);
+  const list = tabList(props);
   const [editing, setEditing] = useState(false);
   const collapsed = group.collapsed && !searching;
   const height = HEAD + (collapsed ? 40 : list.height) + 2;
