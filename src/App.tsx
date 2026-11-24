@@ -219,6 +219,7 @@ export function App() {
               Tab groups <span>{view.groupCards.length}</span>
             </h2>
             <Masonry
+              fresh={searching}
               bricks={view.groupCards.map((c) => ({
                 key: c.key,
                 height: cardHeight(c, searching),
@@ -233,6 +234,7 @@ export function App() {
               Sites <span>{view.siteCards.length}</span>
             </h2>
             <Masonry
+              fresh={searching}
               bricks={[
                 ...(bookmarks.length
                   ? [{ key: "bookmarks", height: bookmarksHeight(bookmarks.length), node: <BookmarksCard key="bookmarks" items={bookmarks} /> }]

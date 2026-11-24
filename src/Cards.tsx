@@ -36,12 +36,25 @@ export interface Brick {
   node: ComponentChildren;
 }
 
+interface Placement {
+  count: number;
+  column: Map<string, number>;
+  order: Map<string, number>;
+  next: number;
+}
+
 /**
  * Masonry: tallest card first, each into the currently shortest column. Balances columns well and
  * gives a giant card (x.com with 200 tabs) a column of its own instead of sitting under small ones.
+ *
+ * Placement is sticky: a card keeps its column and position while the page is open, so closing a
+ * tab only shrinks its card instead of reshuffling the layout under the cursor. Only new cards are
+ * placed, and everything is re-laid out when the column count changes. `fresh` lays out from
+ * scratch without touching the sticky placement (search results).
  */
-export function Masonry({ bricks }: { bricks: Brick[] }) {
+export function Masonry({ bricks, fresh = false }: { bricks: Brick[]; fresh?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
+  const sticky = useRef<Placement>({ count: 0, column: new Map(), order: new Map(), next: 0 });
   const [width, setWidth] = useState(0);
   useLayoutEffect(() => {
     const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
@@ -50,13 +63,35 @@ export function Masonry({ bricks }: { bricks: Brick[] }) {
   }, []);
 
   const count = Math.max(1, Math.floor((width + GAP) / (MIN_COLUMN + GAP)));
-  const columns: Brick[][] = Array.from({ length: count }, () => []);
-  const heights = new Array<number>(count).fill(0);
-  for (const brick of [...bricks].sort((a, b) => b.height - a.height)) {
-    const shortest = heights.indexOf(Math.min(...heights));
-    columns[shortest].push(brick);
-    heights[shortest] += brick.height + GAP;
+  const place: Placement = fresh ? { count, column: new Map(), order: new Map(), next: 0 } : sticky.current;
+  if (place.count !== count) {
+    place.count = count;
+    place.column.clear();
+    place.order.clear();
   }
+  const live = new Set(bricks.map((b) => b.key));
+  for (const key of place.column.keys()) {
+    if (!live.has(key)) {
+      place.column.delete(key);
+      place.order.delete(key);
+    }
+  }
+
+  const heights = new Array<number>(count).fill(0);
+  for (const b of bricks) {
+    const c = place.column.get(b.key);
+    if (c !== undefined) heights[c] += b.height + GAP;
+  }
+  for (const b of bricks.filter((b) => !place.column.has(b.key)).sort((a, b) => b.height - a.height)) {
+    const shortest = heights.indexOf(Math.min(...heights));
+    place.column.set(b.key, shortest);
+    place.order.set(b.key, place.next++);
+    heights[shortest] += b.height + GAP;
+  }
+
+  const columns: Brick[][] = Array.from({ length: count }, () => []);
+  for (const b of bricks) columns[place.column.get(b.key)!].push(b);
+  for (const column of columns) column.sort((a, b) => place.order.get(a.key)! - place.order.get(b.key)!);
   return (
     <div class="masonry" ref={ref}>
       {width > 0 &&
