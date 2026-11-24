@@ -30,6 +30,12 @@ export const prefs = {
   dismissStaleHint() {
     localStorage.setItem("staleHintDismissed", "1");
   },
+  get footerTipDismissed(): boolean {
+    return localStorage.getItem("footerTipDismissed") === "1";
+  },
+  dismissFooterTip() {
+    localStorage.setItem("footerTipDismissed", "1");
+  },
 };
 
 export function applyTheme(theme: Theme) {

@@ -1037,6 +1037,48 @@ main {
   background: color-mix(in oklab, var(--ink) 85%, var(--bg));
 }
 
+/* Points down at Chrome's "Customize Chrome" button, which sits in the bar below the page, bottom right. */
+.footer-tip {
+  position: fixed;
+  right: 24px;
+  bottom: 16px;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  width: 340px;
+  padding: 12px 12px 12px 16px;
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 12.5px;
+  line-height: 1.45;
+  box-shadow: var(--shadow);
+  animation: pop 0.25s both;
+}
+
+.footer-tip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 48px;
+  border: 8px solid transparent;
+  border-top-color: var(--ink);
+}
+
+.footer-tip p {
+  margin: 0;
+}
+
+.footer-tip .btn {
+  flex: none;
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  background: var(--accent);
+  color: #2a2200;
+}
+
 .note {
   position: fixed;
   bottom: 28px;

@@ -313,6 +313,7 @@ export function App({ initial }: { initial: Snapshot }) {
         />
       )}
       <Lemon staleCount={view.staleIds.size} onWake={() => setShowStale(true)} />
+      <FooterTip />
     </>
   );
 }
@@ -379,6 +380,33 @@ function GroupMenu({
           <span class="label">Remove from group</span>
         </button>
       )}
+    </div>
+  );
+}
+
+/**
+ * One-time hint pointing down at the bar Chrome draws under every extension new tab page (extension
+ * name + "Customize Chrome"). Chrome renders it outside the page, so it can't be hidden or detected
+ * from here; the hint explains the switch and goes away for good once dismissed.
+ */
+function FooterTip() {
+  const [shown, setShown] = useState(!prefs.footerTipDismissed);
+  if (!shown) return null;
+  return (
+    <div class="footer-tip" role="note">
+      <p>
+        Chrome adds the bar below. To hide it, open <b>Customize Chrome</b> → <b>Footer</b> and turn off <b>Show footer</b>, or
+        right-click the bar.
+      </p>
+      <button
+        class="btn"
+        onClick={() => {
+          prefs.dismissFooterTip();
+          setShown(false);
+        }}
+      >
+        Got it
+      </button>
     </div>
   );
 }
