@@ -15,6 +15,8 @@ export interface Actions {
   sortGroup(card: Card): void;
   /** Opens the "move to group" menu for a tab, anchored to the clicked button. */
   groupMenu(tab: Tab, anchor: HTMLElement): void;
+  /** Opens the tab's page again in a new tab next to the dashboard; `focus` switches to it. */
+  openCopy(tab: Tab, focus: boolean): void;
   /** Moves tabs into a group, into a new group, or (null) out of their group. Undoable. */
   moveToGroup(tabIds: number[], target: number | "new" | null): void;
 }
@@ -120,11 +122,15 @@ export function Masonry({ bricks, fresh = false }: { bricks: Brick[]; fresh?: bo
   );
 }
 
+/**
+ * How long ago a tab was last opened, as a label and a staleness level 1–4 (a week, two weeks,
+ * a month, three months) that picks the badge color.
+ */
 function age(ms: number) {
   const days = Math.floor((Date.now() - ms) / 86_400_000);
-  if (days < 14) return `${days}d`;
-  if (days < 60) return `${Math.floor(days / 7)}w`;
-  return `${Math.floor(days / 30)}mo`;
+  const label = days < 14 ? `${days}d` : days < 60 ? `${Math.floor(days / 7)}w` : `${Math.floor(days / 30)}mo`;
+  const level = days >= 90 ? 4 : days >= 30 ? 3 : days >= 14 ? 2 : 1;
+  return { label, level };
 }
 
 interface RowProps {
@@ -139,18 +145,24 @@ function TabRow({ tab, stale, actions, onLast }: RowProps) {
   const [leaving, setLeaving] = useState(false);
   return (
     <li
-      class={`row${stale ? " stale" : ""}${tab.discarded ? " asleep" : ""}${leaving ? " leaving" : ""}`}
+      class={`row${stale ? ` stale stale-${age(tab.lastAccessed!).level}` : ""}${tab.discarded ? " asleep" : ""}${leaving ? " leaving" : ""}`}
       draggable
       onDragStart={(e) => {
         e.dataTransfer!.setData(DRAG_TYPE, String(tab.id));
         e.dataTransfer!.effectAllowed = "move";
       }}
     >
-      <button class="row-main" title={`${tab.title}\n${tab.url}`} onClick={() => actions.activate(tab)}>
+      <button
+        class="row-main"
+        title={`${tab.title}\n${tab.url}`}
+        // Like a link: Cmd/Ctrl-click or middle-click opens the page in a new tab (Shift: and switch to it).
+        onClick={(e) => (e.metaKey || e.ctrlKey ? actions.openCopy(tab, e.shiftKey) : actions.activate(tab))}
+        onAuxClick={(e) => e.button === 1 && actions.openCopy(tab, e.shiftKey)}
+      >
         <Favicon url={tab.url || tab.pendingUrl} />
         <span class="row-title">{tab.title || tab.url}</span>
         {tab.audible && <Icon name="volume" size={13} />}
-        {stale && <span class="age">{age(tab.lastAccessed!)}</span>}
+        {stale && <span class="age">{age(tab.lastAccessed!).label}</span>}
       </button>
       <button
         class="row-x row-group"

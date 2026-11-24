@@ -179,6 +179,14 @@ export function App({ initial }: { initial: Snapshot }) {
         remember("sort group", () => restorePlaces(places));
       });
     },
+    async openCopy(tab: Tab, focus: boolean) {
+      const url = tab.url || tab.pendingUrl;
+      if (!url) return;
+      await attempt("open a new tab", async () => {
+        const here = await chrome.tabs.getCurrent(); // the dashboard: open right after it
+        await chrome.tabs.create({ url, active: focus, index: here ? here.index + 1 : undefined, windowId: here?.windowId });
+      });
+    },
     groupMenu(tab, anchor) {
       setMenu({ tab, anchor });
     },
