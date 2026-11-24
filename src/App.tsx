@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { applyOrder, deriveView, sortBySitePlan, useSnapshot, type Card, type Snapshot, type Tab } from "./model";
 import { bookmarksHeight, BookmarksCard, cardHeight, GROUP_COLORS, GroupCard, Masonry, PinnedStrip, SiteCard, type Actions, type Bookmark } from "./Cards";
-import { placesOf, remember, reopen, restorePlaces, undoLast } from "./undo";
+import { closedTabsOf, placesOf, remember, reopen, restorePlaces, undoLast } from "./undo";
 import { Icon } from "./icons";
 import { Lemon } from "./Lemon";
 import { Digits } from "./Digits";
@@ -58,7 +58,7 @@ export function App({ initial }: { initial: Snapshot }) {
       const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
       if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "z" && !typing && !document.querySelector("dialog[open]")) {
         e.preventDefault();
-        void undoLast().then((label) => setNote(label ? `Undone: ${label}` : "Nothing to undo"));
+        void undoLast().then(setNote);
         return;
       }
       if (typing || e.metaKey || e.ctrlKey || e.altKey || document.querySelector("dialog[open]")) return;
@@ -76,13 +76,13 @@ export function App({ initial }: { initial: Snapshot }) {
   }, [note]);
 
   const confirm = (a: Ask) => (prefs.skipConfirm(a.skipKey) ? a.run() : setAsk(a));
+  const byIds = (ids: number[]) => snap.tabs.filter((t) => ids.includes(t.id!));
   const close = (ids: number[]) => {
-    const urls = snap.tabs.filter((t) => ids.includes(t.id!)).map((t) => t.url!);
+    const closed = closedTabsOf(byIds(ids));
     drop(ids);
     void chrome.tabs.remove(ids);
-    remember(`close ${plural(ids.length, "tab")}`, () => reopen(urls));
+    remember(`close ${plural(ids.length, "tab")}`, () => reopen(closed));
   };
-  const byIds = (ids: number[]) => snap.tabs.filter((t) => ids.includes(t.id!));
 
   const actions: Actions = {
     async activate(tab: Tab) {
