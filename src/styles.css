@@ -68,6 +68,7 @@
 }
 
 html {
+  scrollbar-gutter: stable; /* page width must not change when the scrollbar appears */
   background:
     radial-gradient(900px 420px at 8% -12%, color-mix(in oklab, var(--accent) 14%, transparent), transparent 70%),
     var(--bg);

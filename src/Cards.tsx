@@ -56,14 +56,27 @@ interface Placement {
 export function Masonry({ bricks, fresh = false }: { bricks: Brick[]; fresh?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const sticky = useRef<Placement>({ count: 0, column: new Map(), order: new Map(), next: 0 });
-  const [width, setWidth] = useState(0);
+  // State is the column count, not the width, so most resizes don't re-render. The update waits a
+  // frame: re-rendering inside the observer callback changes our own height in the same frame,
+  // which Chrome reports as "ResizeObserver loop completed with undelivered notifications".
+  const [count, setCount] = useState(0);
   useLayoutEffect(() => {
-    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    const columnsFor = (width: number) => Math.max(1, Math.floor((width + GAP) / (MIN_COLUMN + GAP)));
+    setCount(columnsFor(ref.current!.clientWidth));
+    let frame = 0;
+    const observer = new ResizeObserver(([entry]) => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => setCount(columnsFor(entry.contentRect.width)));
+    });
     observer.observe(ref.current!);
-    return () => observer.disconnect();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, []);
 
-  const count = Math.max(1, Math.floor((width + GAP) / (MIN_COLUMN + GAP)));
+  if (!count) return <div class="masonry" ref={ref} />;
+
   const place: Placement = fresh ? { count, column: new Map(), order: new Map(), next: 0 } : sticky.current;
   if (place.count !== count) {
     place.count = count;
@@ -95,12 +108,11 @@ export function Masonry({ bricks, fresh = false }: { bricks: Brick[]; fresh?: bo
   for (const column of columns) column.sort((a, b) => place.order.get(a.key)! - place.order.get(b.key)!);
   return (
     <div class="masonry" ref={ref}>
-      {width > 0 &&
-        columns.map((column, i) => (
-          <div class="masonry-col" key={i}>
-            {column.map((b) => b.node)}
-          </div>
-        ))}
+      {columns.map((column, i) => (
+        <div class="masonry-col" key={i}>
+          {column.map((b) => b.node)}
+        </div>
+      ))}
     </div>
   );
 }
