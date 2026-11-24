@@ -694,11 +694,13 @@ main {
 }
 
 .group-menu {
-  position: fixed;
+  position-anchor: --group-menu;
+  position-area: bottom span-left;
+  position-try-fallbacks: flip-block;
   inset: auto;
   width: 230px;
   max-height: 320px;
-  margin: 0;
+  margin: 4px 0;
   padding: 5px;
   overflow: auto;
   border: 1px solid var(--line);
@@ -706,6 +708,27 @@ main {
   background: var(--surface);
   color: var(--ink);
   box-shadow: var(--shadow);
+}
+
+/* All popovers (settings, color palette, group menu) fade and drop in when they open. */
+[popover] {
+  transition:
+    opacity 0.14s ease-out,
+    translate 0.14s ease-out,
+    display 0.14s allow-discrete,
+    overlay 0.14s allow-discrete;
+}
+
+[popover]:not(:popover-open) {
+  opacity: 0;
+  translate: 0 -4px;
+}
+
+@starting-style {
+  [popover]:popover-open {
+    opacity: 0;
+    translate: 0 -4px;
+  }
 }
 
 .group-menu button {

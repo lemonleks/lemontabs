@@ -114,8 +114,7 @@ export function App({ initial }: { initial: Snapshot }) {
       await applyOrder(order, tabs);
     },
     groupMenu(tab, anchor) {
-      const r = anchor.getBoundingClientRect();
-      setMenu({ tab, x: Math.max(8, r.right - 230), y: r.bottom + 4 });
+      setMenu({ tab, anchor });
     },
   };
 
@@ -278,14 +277,20 @@ export function App({ initial }: { initial: Snapshot }) {
 
 interface MenuAt {
   tab: Tab;
-  x: number;
-  y: number;
+  anchor: HTMLElement;
 }
 
-/** "Move to group" menu for one tab: existing groups (its window first), a new group, or ungroup. */
-function GroupMenu({ tab, x, y, groups, tabs, onDone }: MenuAt & { groups: chrome.tabGroups.TabGroup[]; tabs: Tab[]; onDone: () => void }) {
+/**
+ * "Move to group" menu for one tab: existing groups (its window first), a new group, or ungroup.
+ * Positioned with CSS anchor positioning against the clicked button; it flips above near the bottom.
+ */
+function GroupMenu({ tab, anchor, groups, tabs, onDone }: MenuAt & { groups: chrome.tabGroups.TabGroup[]; tabs: Tab[]; onDone: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => ref.current!.showPopover(), []);
+  useEffect(() => {
+    anchor.style.setProperty("anchor-name", "--group-menu");
+    ref.current!.showPopover();
+    return () => anchor.style.removeProperty("anchor-name");
+  }, []);
   const pick = (move: () => Promise<unknown>) => {
     void move();
     ref.current!.hidePopover(); // closing fires onToggle -> onDone
@@ -293,15 +298,12 @@ function GroupMenu({ tab, x, y, groups, tabs, onDone }: MenuAt & { groups: chrom
   const targets = groups
     .filter((g) => g.id !== tab.groupId)
     .sort((a, b) => Number(b.windowId === tab.windowId) - Number(a.windowId === tab.windowId));
-  // Flip above the button when the menu would run off the bottom of the window.
-  const top = y + 320 > innerHeight ? Math.max(8, y - 330) : y;
 
   return (
     <div
       ref={ref}
       class="group-menu"
       popover="auto"
-      style={{ left: `${x}px`, top: `${top}px` }}
       onToggle={(e) => (e as ToggleEvent).newState === "closed" && onDone()}
     >
       {targets.map((g) => (
