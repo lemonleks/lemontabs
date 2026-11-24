@@ -13,6 +13,8 @@ export interface Actions {
   updateGroup(id: number, change: chrome.tabGroups.UpdateProperties): void;
   ungroup(card: Card): void;
   sortGroup(card: Card): void;
+  /** Opens the "move to group" menu for a tab, anchored to the clicked button. */
+  groupMenu(tab: Tab, anchor: HTMLElement): void;
 }
 
 // Fixed metrics give every card's height from its tab count alone, so masonry needs no DOM measuring.
@@ -145,6 +147,16 @@ function TabRow({ tab, stale, actions, onLast }: RowProps) {
         {tab.pinned && <Icon name="pin" size={13} />}
         {stale && <span class="age">{age(tab.lastAccessed!)}</span>}
       </button>
+      {!tab.pinned && (
+        <button
+          class="row-x row-group"
+          aria-label="Move to group"
+          title="Move to group"
+          onClick={(e) => actions.groupMenu(tab, e.currentTarget)}
+        >
+          <Icon name="folderPlus" size={14} />
+        </button>
+      )}
       <button class="row-x" aria-label="Close tab" title="Close tab" onClick={() => (onLast ? onLast() : setLeaving(true))}>
         <Icon name="x" size={14} />
       </button>

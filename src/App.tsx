@@ -25,6 +25,7 @@ export function App({ initial }: { initial: Snapshot }) {
   const [showStale, setShowStale] = useState(false);
   const [ask, setAsk] = useState<Ask | null>(null);
   const [note, setNote] = useState("");
+  const [menu, setMenu] = useState<MenuAt | null>(null);
   const search = useRef<HTMLInputElement>(null);
 
   const view = useMemo(() => deriveView(snap, scope, query), [snap, scope, query]);
@@ -111,6 +112,10 @@ export function App({ initial }: { initial: Snapshot }) {
       const order = sortBySitePlan(tabs);
       if (!order) return setNote("This group is already sorted by site");
       await applyOrder(order, tabs);
+    },
+    groupMenu(tab, anchor) {
+      const r = anchor.getBoundingClientRect();
+      setMenu({ tab, x: Math.max(8, r.right - 230), y: r.bottom + 4 });
     },
   };
 
@@ -256,8 +261,68 @@ export function App({ initial }: { initial: Snapshot }) {
       </main>
 
       {ask && <Confirm ask={ask} onDone={() => setAsk(null)} />}
+      {menu && (
+        <GroupMenu
+          key={menu.tab.id}
+          {...menu}
+          groups={snap.groups}
+          tabs={snap.tabs}
+          // Light dismiss closes the old menu asynchronously, possibly after another row opened a new one.
+          onDone={() => setMenu((m) => (m?.tab.id === menu.tab.id ? null : m))}
+        />
+      )}
       <Lemon staleCount={view.staleIds.size} onWake={() => setShowStale(true)} />
     </>
+  );
+}
+
+interface MenuAt {
+  tab: Tab;
+  x: number;
+  y: number;
+}
+
+/** "Move to group" menu for one tab: existing groups (its window first), a new group, or ungroup. */
+function GroupMenu({ tab, x, y, groups, tabs, onDone }: MenuAt & { groups: chrome.tabGroups.TabGroup[]; tabs: Tab[]; onDone: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => ref.current!.showPopover(), []);
+  const pick = (move: () => Promise<unknown>) => {
+    void move();
+    ref.current!.hidePopover(); // closing fires onToggle -> onDone
+  };
+  const targets = groups
+    .filter((g) => g.id !== tab.groupId)
+    .sort((a, b) => Number(b.windowId === tab.windowId) - Number(a.windowId === tab.windowId));
+  // Flip above the button when the menu would run off the bottom of the window.
+  const top = y + 320 > innerHeight ? Math.max(8, y - 330) : y;
+
+  return (
+    <div
+      ref={ref}
+      class="group-menu"
+      popover="auto"
+      style={{ left: `${x}px`, top: `${top}px` }}
+      onToggle={(e) => (e as ToggleEvent).newState === "closed" && onDone()}
+    >
+      {targets.map((g) => (
+        <button key={g.id} onClick={() => pick(() => chrome.tabs.group({ groupId: g.id, tabIds: [tab.id!] }))}>
+          <span class="swatch" data-color={g.color} />
+          <span class="label">{g.title || "Unnamed group"}</span>
+          <span class="count">{tabs.filter((t) => t.groupId === g.id).length}</span>
+        </button>
+      ))}
+      {targets.length > 0 && <hr />}
+      <button onClick={() => pick(() => chrome.tabs.group({ tabIds: [tab.id!], createProperties: { windowId: tab.windowId } }))}>
+        <Icon name="folderPlus" size={14} />
+        <span class="label">New group</span>
+      </button>
+      {tab.groupId >= 0 && (
+        <button onClick={() => pick(() => chrome.tabs.ungroup([tab.id!]))}>
+          <Icon name="ungroup" size={14} />
+          <span class="label">Remove from group</span>
+        </button>
+      )}
+    </div>
   );
 }
 

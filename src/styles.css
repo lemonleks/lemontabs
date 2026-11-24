@@ -677,6 +677,69 @@ main {
   color: var(--danger);
 }
 
+/* Shown only on hover so it doesn't eat title width on every row. */
+.row-group {
+  display: none;
+  margin-right: 0;
+}
+
+.row:hover .row-group,
+.row-group:focus-visible {
+  display: grid;
+}
+
+.row-group:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.group-menu {
+  position: fixed;
+  inset: auto;
+  width: 230px;
+  max-height: 320px;
+  margin: 0;
+  padding: 5px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.group-menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  font-size: 13px;
+  text-align: left;
+}
+
+.group-menu button:hover {
+  background: var(--hover);
+}
+
+.group-menu .label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.group-menu hr {
+  margin: 4px 2px;
+  border: 0;
+  border-top: 1px solid var(--line-soft);
+}
+
 .row.stale {
   background: var(--accent-soft);
 }
