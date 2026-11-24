@@ -616,7 +616,8 @@ main {
   border-radius: 8px;
 }
 
-.row:hover {
+.row:hover,
+.row:has(.row-group[data-open]) {
   background: var(--hover);
 }
 
@@ -668,6 +669,7 @@ main {
 }
 
 .row:hover .row-x,
+.row:has(.row-group[data-open]) .row-x,
 .row-x:focus-visible {
   opacity: 1;
 }
