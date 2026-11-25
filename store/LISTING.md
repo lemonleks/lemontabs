@@ -18,16 +18,18 @@
 ```
 lemontabs replaces the new tab page with a calm overview of everything you have open.
 
-• Every open tab on one screen, grouped by site
+• Every open tab on one screen, grouped by site in a tidy masonry layout
 • Chrome tab groups as their own cards: collapse, rename, recolor, sort or ungroup them without leaving the page
-• Turn all of a site's tabs into a tab group in one click
+• Drag a tab onto a group to move it there, or turn all of a site's tabs into a group in one click
+• Pinned tabs in a compact strip at the top
 • Total tab count across all windows, or just the current one
 • Search tabs and bookmarks as you type; press Enter to search Google
-• Close duplicate tabs, sort a window or a single group by site
-• Highlight tabs you haven't opened in a week
+• Close duplicates (you see which ones first), sort a window or a single group by site
+• Cmd/Ctrl+Z undoes closes, moves and sorts
+• Tabs you haven't opened in a while are color-coded by age
+• Opens instantly; light and dark themes
 • Optional: keep tabs from the same site next to each other automatically
-• Light and dark themes
-• A small lemon that naps in the corner until you poke it
+• Lemon, a small mascot who naps in the corner until you poke it
 
 Privacy: lemontabs has no servers. Your tabs, bookmarks and settings never leave your browser.
 ```
