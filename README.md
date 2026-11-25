@@ -3,6 +3,10 @@
 New tab page for Chrome that shows every open tab grouped by site and by Chrome tab group.
 A rewrite of [Smart Tabs](https://chromewebstore.google.com/detail/inogfehnhcebnnojoifmabiccedlllpl), whose source isn't published.
 
+## Install from the Chrome Web Store
+
+[**lemontabs on the Chrome Web Store**](https://chromewebstore.google.com/detail/lemontabs/ndiojbnohjfledikfohcolgohoabmdgf): one click, updates itself. The store build can lag a release while Google reviews it.
+
 ## Install from a release
 
 1. Download `lemontabs-vX.Y.Z.zip` from [Releases](https://github.com/lemonleks/lemontabs/releases/latest) and unzip it somewhere it can stay.

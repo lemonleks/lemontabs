@@ -1,4 +1,6 @@
-## Install
+**Easiest:** install from the [Chrome Web Store](https://chromewebstore.google.com/detail/lemontabs/ndiojbnohjfledikfohcolgohoabmdgf) (updates itself; may lag this release while Google reviews it).
+
+## Install from this release
 
 1. Download **lemontabs-VERSION.zip** below and unzip it into a folder that will stay put.
 2. Open `chrome://extensions` and turn on **Developer mode** (top right).
