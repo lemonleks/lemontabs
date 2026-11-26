@@ -5,7 +5,7 @@
 ## 0. Перед загрузкой
 
 1. `bun run zip` собирает `lemontabs.zip` в корне репозитория.
-2. Выложи `store/PRIVACY.md` по публичному адресу (gist, GitHub Pages, страница на lemonleks.me). Без URL раздел Privacy не сохранится.
+2. Политика конфиденциальности: `docs/privacy.md`, GitHub Pages (main, `/docs`) отдаёт её как https://lemonleks.github.io/lemontabs/privacy.html. Ссылку на github.com/…/blob/… стор не принимает: «Ссылка на политику конфиденциальности не работает».
 
 ## 1. Загрузка
 
@@ -69,7 +69,7 @@ Replaces the new tab page with a dashboard of the user's open tabs, grouped by s
 | Are you using remote code? | **No, I am not using remote code** |
 | Data usage: что собираете | ничего не отмечать: данные не покидают устройство |
 | Три сертификации внизу | отметить все три |
-| Privacy policy URL | публичный адрес `store/PRIVACY.md` |
+| Privacy policy URL | https://lemonleks.github.io/lemontabs/privacy.html |
 
 ## 4. Distribution
 
