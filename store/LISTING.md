@@ -5,7 +5,7 @@
 ## 0. Перед загрузкой
 
 1. `bun run zip` собирает `lemontabs.zip` в корне репозитория.
-2. Политика конфиденциальности: `docs/privacy.md`, GitHub Pages (main, `/docs`) отдаёт её как https://lemonleks.github.io/lemontabs/privacy.html. Ссылку на github.com/…/blob/… стор не принимает: «Ссылка на политику конфиденциальности не работает».
+2. Политика конфиденциальности: `docs/privacy.md`. GitHub Pages (main, `/docs`) собирает её, а Cloudflare Worker из `site/` (`cd site && wrangler deploy`) отдаёт её на https://tabs.lemonleks.me/privacy. Ссылку на github.com/…/blob/… стор не принимает: «Ссылка на политику конфиденциальности не работает».
 
 ## 1. Загрузка
 
@@ -69,7 +69,7 @@ Replaces the new tab page with a dashboard of the user's open tabs, grouped by s
 | Are you using remote code? | **No, I am not using remote code** |
 | Data usage: что собираете | ничего не отмечать: данные не покидают устройство |
 | Три сертификации внизу | отметить все три |
-| Privacy policy URL | https://lemonleks.github.io/lemontabs/privacy.html |
+| Privacy policy URL | https://tabs.lemonleks.me/privacy |
 
 ## 4. Distribution
 
